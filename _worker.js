@@ -265,7 +265,7 @@ export default {
     }
 
     // 10. 保护所有管理端点
-    if (path.startsWith('/admin/') && ) {
+    if (path.startsWith('/admin/') && isLoggedIn) {
       const isLoggedIn = await validateAdminSession();
       if (!isLoggedIn) {
         return new Response('需要登录', { status: 401 });
