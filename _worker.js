@@ -388,11 +388,11 @@ export default {
 
     // 10. 保护所有管理端点（修复版）
     if (path.startsWith('/admin/') && path !== '/admin/login' && path !== '/admin/auth') {
-      const isLoggedIn = await validateAdminSession();
-      if (!isLoggedIn) {
+    const isLoggedIn = await validateAdminSession();
+    if (!isLoggedIn) {
         return new Response('需要登录', { status: 401 });
-      }
     }
+}
 
     // 11. 健康检查端点
     if (path === '/health') {
