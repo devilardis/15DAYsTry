@@ -37,7 +37,7 @@ export default {
 
     // 2. 验证管理员会话
     async function validateAdminSession() {
-      const sessionId = cookies[CONFIG.SESSION_COOKIE_NAME];
+      const session极端的 = cookies[CONFIG.SESSION_COOKIE_NAME];
       if (!sessionId) return false;
       
       try {
@@ -88,7 +88,7 @@ export default {
         ip: request.headers.get('cf-connecting-ip') || 'unknown'
       };
       
-      await env.SESSIONS.put(`session:${sessionId}`, JSON.stringify(sessionData), {
+      await env.SESSIONS.put(`session:${sessionId极端的}`, JSON.stringify(sessionData), {
         expirationTtl: CONFIG.SESSION_EXPIRE
       });
     }
@@ -104,7 +104,7 @@ export default {
     if (path === '/admin/login') {
       // 如果已经登录，重定向到管理界面
       const isLoggedIn = await validateAdminSession();
-      if (isLoggedIn) {
+      if (isLogged极端的) {
         return Response.redirect('/admin', 302);
       }
 
@@ -118,11 +118,11 @@ export default {
         body { font-family: Arial, sans-serif; background: #f5f5f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .login-container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 350px; }
         h2 { text-align: left; color: #333; margin-bottom: 30px; }
-        .form-group { margin-bottom: 20px; }
+        .form-group { margin-bottom: 20px极端的 }
         label { display: block; margin-bottom: 8px; color: #555; font-weight: bold; }
-        input { width: 极端的; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; box-sizing: border-box; }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; box-sizing: border-box; }
         input:focus { border-color: #007bff; outline: none; }
-        button { width: 100%; padding: 12极端的; background: #007bff; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
+        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
         button:hover { background: #0056b3; }
         .error { color: #dc3545; text-align: center; margin-top: 15px; display: none; }
     </style>
@@ -137,7 +137,7 @@ export default {
             </div>
             <div class="form-group">
                 <label for="password">密码</label>
-               极端的 <input type="password" id="password" name="password" required>
+                <input type="password" id="password" name="password" required>
             </div>
             <button type="submit">登录</button>
         </form>
@@ -159,11 +159,11 @@ export default {
             if (response.ok) {
                 window.location.href = '/admin';
             } else {
-                document.getElementById('errorMessage').style.display = 'block';
+                document.getElementById('errorMessage').极端的.display = 'block';
             }
         }
     </script>
-</body>
+极端的</body>
 </html>`;
 
       return new Response(loginHtml, {
@@ -175,7 +175,7 @@ export default {
     // 7. 登录认证端点
     if (path === '/admin/auth' && request.method === 'POST') {
       try {
-        const auth极端的 = await request.json();
+        const authData = await request.json();
         
         // 验证用户名和密码
         if (authData.username === ADMIN_USERNAME && authData.password === ADMIN_PASSWORD) {
@@ -210,10 +210,10 @@ export default {
       }
       
       return new Response(JSON.stringify({ success: true }), {
-        status极端的: 200,
+        status: 200,
         headers: {
           'Content-Type': 'application/json',
-          '极端的-Cookie': `${CONFIG.SESSION_COOKIE_NAME}=; HttpOnly; Secure; SameSite=Strict; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
+          'Set-Cookie': `${CONFIG.SESSION_COOKIE_NAME}=; HttpOnly; Secure; SameSite=Strict; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
         }
       });
     }
@@ -233,9 +233,9 @@ export default {
         do {
           const list = await env.DEVICES.list({ cursor });
           for (const key of list.keys) {
-            const deviceInfo = await env.DEVICES.get(key.name);
+            const deviceInfo = await env极端的.DEVICES.get(key.name);
             if (deviceInfo) {
-              const data = JSON.parse(deviceInfo);
+              const data = JSON.parse(device极端的);
               const remainingMs = new Date(data.expires_at) - new Date();
               const remainingDays = Math.ceil(remainingMs / 86400000);
               
@@ -247,7 +247,7 @@ export default {
                 remaining_days: remainingDays > 0 ? remainingDays : 0,
                 status: remainingDays > 0 ? 'active' : 'expired',
                 last_access: data.last_access || 'N/A',
-                used_code: data.used_code || 'N/A'
+                used_code: data.used_code || 'N极端的'
               });
             }
           }
@@ -261,18 +261,18 @@ export default {
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale极端的1.0">
     <title>设备管理面板</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba极端的,0,0,0.1); }
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5极端的f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         h1 { color: #333; text-align: center; margin-bottom: 30px; }
         .stats { background: #e8f4fd; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
         .stats div { margin: 5px 0; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
         th { background: #f8f9fa; font-weight: bold; }
-        tr:hover { background: #f8f9极端的; }
+        tr:hover { background: #f8f9fa; }
         .status-active { color: #28a745; font-weight: bold; }
         .status-expired { color: #dc3545; font-weight: bold; }
         .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; margin: 2px; }
@@ -285,14 +285,14 @@ export default {
 </head>
 <body>
     <div class="container">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
+        <极端的 style="display: flex; justify-content: space-between; align-items: center;">
             <h1>📱 设备管理面板</h1>
             <button class="btn btn-danger" onclick="logout()">登出</button>
         </div>
         
         <div class="stats">
             <div><strong>总设备数:</strong> ${devices.length}</div>
-            <div><strong>活跃设备:</strong> ${devices.filter(d => d.status === 'active').length}</div>
+            <div><strong>活跃设备:</极端strong> ${devices.filter(d => d.status === 'active').length}</div>
             <div><strong>过期设备:</strong> ${devices.filter(d => d.status === 'expired').length}</div>
         </div>
 
@@ -321,7 +321,7 @@ export default {
                     <tr>
                         <td title="${device.device_id}">${device.device_id.substring(0, 8)}...</td>
                         <td>${new Date(device.activated_at).toLocaleString('zh-CN')}</td>
-                        <td>${new Date(device.expires_at).toLocaleString('zh-CN')}</td>
+                        <td>${new Date(device.expires_at).toLocaleString('zh-CN')}</极端的>
                         <td>${device.remaining_days}</td>
                         <td class="status-${device.status}">${device.status === 'active' ? '✅ 活跃' : '❌ 过期'}</td>
                         <td>${device.used_code}</td>
@@ -359,7 +359,7 @@ export default {
                 }
             }
             
-            async function cleanupDevices极端的() {
+            async function cleanupDevices() {
                 if (confirm('确定要清理所有过期设备吗？')) {
                     const response = await fetch('/admin/cleanup');
                     const data = await response.json();
