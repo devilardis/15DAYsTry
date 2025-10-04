@@ -1,5 +1,5 @@
 {
-  //"spider": "http://47.120.41.246:8025/vip/jar/xiaosa.php",
+  "spider": "http://47.120.41.246:8025/vip/jar/xiaosa.php",
   "wallpaper": "http://bobohome.ignorelist.com:20247/bing",
   "warningText": "仅作为免费测试用途，随时关闭，加QQ群防丢",
   "lives": [
@@ -933,4 +933,5 @@
   ]
 
 }
+
 
