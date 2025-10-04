@@ -25,7 +25,7 @@ export default {
     }
 
     // ========== 4. 获取配置文件的真实地址（来自环境变量 JSON_CONFIG_URL）
-    const realConfigUrl = env[JSON_CONFIG_URL_ENV_VAR]; // 请确保您的环境变量名与此一致
+    const realConfigUrl = env[JSON_CONFIG_URL]; // 请确保您的环境变量名与此一致
     if (!realConfigUrl) {
       return new Response('Server Config Error: Missing JSON_CONFIG_URL（请在环境变量中配置真实配置地址）', {
         status: 500,
