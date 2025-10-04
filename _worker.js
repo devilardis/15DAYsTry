@@ -4,7 +4,7 @@ export default {
     const ALLOWED_USER_AGENT_KEYWORD = 'okhttp';  // 只放行包含此关键词的UA
     const REDIRECT_URL = 'https://www.baidu.com'; // 非法UA重定向地址
     const CONFIG_PATH = '/';                       // 唯一允许访问的路径
-    const JSON_CONFIG_URL_ENV_VAR = 'JSON_CONFIG_UR'; // 环境变量名（您仪表盘上配置的变量名）
+    const JSON_CONFIG_URL_ENV_VAR = 'JSON_CONFIG_URL'; // 环境变量名（您仪表盘上配置的变量名）
 
     // ========== 1. 获取请求基本信息 ==========
     const url = new URL(request.url);
@@ -25,7 +25,7 @@ export default {
     }
 
     // ========== 4. 获取配置文件的真实地址（来自环境变量 JSON_CONFIG_URL）
-    const realConfigUrl = env[JSON_CONFIG_UR]; // 请确保您的环境变量名与此一致
+    const realConfigUrl = env[JSON_CONFIG_URL]; // 请确保您的环境变量名与此一致
     if (!realConfigUrl) {
       return new Response('Server Config Error: Missing JSON_CONFIG_URL（请在环境变量中配置真实配置地址）', {
         status: 500,
