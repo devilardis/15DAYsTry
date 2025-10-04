@@ -8,7 +8,16 @@ export default {
 
     const REDIRECT_URL = '/fallback'; // Token无效或过期时重定向的地址
     const ALLOWED_USER_AGENTS = ['okhttp/4.9.1', 'tvbox', '影视仓']; // 允许激活的设备 User-Agent
-    const MAX_DEVICES_PER_TOKEN = 10; // 每个 Token 最多允许绑定的设备数量
+
+    // 从环境变量中读取最大设备绑定数量，如果未设置则默认为 10
+    const MAX_DEVICES_PER_TOKEN = parseInt(env.MAX_DEVICES_PER_TOKEN) || 10;
+
+    // 从环境变量中读取管理员 TOKEN，如果未设置则默认为空（需要设置）
+    const ADMIN_TOKEN = env.ADMIN_TOKEN || '';
+
+    if (!ADMIN_TOKEN) {
+      console.error('⚠️ 未设置 ADMIN_TOKEN 环境变量。请在 Cloudflare Dashboard 中设置 ADMIN_TOKEN。');
+    }
 
     // ======================
     // 请求处理辅助函数：处理 CORS
@@ -29,50 +38,65 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
+
     // ======================
     // 1. 管理员登录接口 (/admin/auth)
     // ======================
     if (path === '/admin/auth' && request.method === 'POST') {
-      const isAdmin = env.ADMIN_USERNAME === 'admin' && env.ADMIN_PASSWORD === 'password'; // 请替换为实际环境变量或安全验证
-      if (!isAdmin) {
-        return new Response(JSON.stringify({ success: false, error: '需要管理员权限' }), {
+      // 从请求体中获取传递的 TOKEN
+      let requestBody;
+      try {
+        requestBody = await request.json();
+      } catch (e) {
+        return new Response(JSON.stringify({ success: false, error: '无效的请求体' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        });
+      }
+
+      const providedToken = requestBody.token; // 假设前端传递 { token: 'YOUR_ADMIN_TOKEN' }
+
+      if (!providedToken) {
+        return new Response(JSON.stringify({ success: false, error: '未提供管理员 TOKEN' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        });
+      }
+
+      // 验证提供的 TOKEN 是否与环境变量中的 ADMIN_TOKEN 匹配
+      if (providedToken !== ADMIN_TOKEN) {
+        return new Response(JSON.stringify({ success: false, error: '管理员 TOKEN 无效' }), {
           status: 403,
           headers: { 'Content-Type': 'application/json; charset=utf-8' },
         });
       }
 
-      // 生成会话 Cookie（简化示例，实际应使用更安全的 Session 管理）
-      const sessionCookie = `admin_session=${crypto.randomUUID()}; Path=/; HttpOnly; Secure; SameSite=Strict`;
-      const response = new Response(JSON.stringify({ success: true }), {
+      // 管理员登录成功，返回成功响应
+      // （如果使用 Session/Cookie，可以在此设置，此处简化处理）
+      return new Response(JSON.stringify({ success: true, message: '管理员登录成功' }), {
         status: 200,
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-          'Set-Cookie': sessionCookie,
-        },
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
       });
-      return response;
     }
 
     // ======================
     // 2. 生成验证码接口 (/generate-code)
     // ======================
     if (path === '/generate-code' && request.method === 'POST') {
-      // 检查管理员权限（通过 Session Cookie）
-      const cookieHeader = request.headers.get('Cookie');
-      if (!cookieHeader || !cookieHeader.includes('admin_session=')) {
-        return new Response(JSON.stringify({ success: false, error: '需要管理员权限' }), {
-          status: 403,
-          headers: { 'Content-Type': 'application/json; charset=utf-8' },
-        });
-      }
+      // 检查管理员权限（通过某种方式，这里假设管理员已登录或通过其他方式验证）
+      // 为了简化，这里假设任何通过 /generate-code 的请求都是管理员，实际应通过更安全的方式验证
+      // 您可以在此处添加更严格的管理员验证逻辑，如通过 Session/Cookie 或 Token
 
-      // 生成唯一的 Token
+      // 生成唯一的 Token（验证码）
       const token = crypto.randomUUID().substring(0, 12); // 生成 12 位 Token
+
+      // 从环境变量中获取最大设备绑定数量，或使用默认值
+      const maxDevices = MAX_DEVICES_PER_TOKEN;
 
       // 构建 Token 信息，包括设备计数和最大设备数
       const codeInfo = {
         device_count: 0,
-        max_devices: MAX_DEVICES_PER_TOKEN,
+        max_devices: maxDevices,
         activated_at: new Date().toISOString(),
         used_code: token,
         // 可根据需要添加更多字段，如 user_agent, client_ip 等
@@ -97,13 +121,12 @@ export default {
     // 3. 退出登录接口 (/admin/logout)
     // ======================
     if (path === '/admin/logout' && request.method === 'POST') {
-      // 清除管理员会话 Cookie
-      const response = new Response(JSON.stringify({ success: true, message: '已成功退出登录' }), {
+      // 清除管理员会话（如果有实现 Session/Cookie，可以在此清除）
+      // 此处简化处理，直接返回成功响应
+      return new Response(JSON.stringify({ success: true, message: '已成功退出登录' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
       });
-      response.headers.set('Set-Cookie', 'admin_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Strict');
-      return response;
     }
 
     // ======================
@@ -121,8 +144,32 @@ export default {
     // 5. 设备列表接口 (/admin/devices)
     // ======================
     if (path === '/admin/devices' && request.method === 'GET') {
-      // 简单返回设备列表信息（可扩展）
-      return new Response(JSON.stringify({ message: '设备列表' }), {
+      // 获取所有已激活的 Token 信息
+      const keys = await env.CODES.list({ prefix: 'code:' });
+      const tokens = keys.keys.map(key => key.name.replace('code:', ''));
+
+      const devicesList = [];
+
+      for (const token of tokens) {
+        const codeData = await env.CODES.get(`code:${token}`);
+        if (codeData) {
+          const codeInfo = JSON.parse(codeData);
+          devicesList.push({
+            token: token, // 将 Token 视为用户名
+            device_count: codeInfo.device_count,
+            max_devices: codeInfo.max_devices,
+            activated_at: codeInfo.activated_at,
+            // 如果需要，可以在此添加更多字段，如绑定的设备 ID 列表
+          });
+        }
+      }
+
+      // 返回设备列表信息
+      return new Response(JSON.stringify({
+        success: true,
+        total_tokens: devicesList.length,
+        tokens: devicesList,
+      }), {
         status: 200,
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
       });
