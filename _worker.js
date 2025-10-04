@@ -1,4 +1,4 @@
-// _worker.js - 完整修复版本（无乱码，功能完整）
+// _worker.js - 第一部分：导入与基础配置
 
 export default {
   async fetch(request, env, ctx) {
@@ -90,7 +90,6 @@ export default {
       }
       return cookies;
     }
-
     // 2. 生成随机验证码函数
     function generateOneTimeCode(length = CONFIG.ONETIME_CODE_LENGTH) {
       const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -141,7 +140,6 @@ export default {
         headers: handleCORS(request)
       });
     }
-
     // 7. 根路径 - 服务主页（显示当前配置信息）
     if (path === '/' || path === '') {
       // 检查是否有token参数（设备激活）
@@ -522,7 +520,6 @@ export default {
         });
       }
     }
-
     // 12. 设备列表端点
     if (path === '/admin/devices') {
       const isLoggedIn = await validateAdminSession();
@@ -645,4 +642,48 @@ export default {
         </div>
 
         <div>
-            <a href="${BASE_URL}/">
+            <a href="${BASE_URL}/">返回首页</a> | 
+            <a href="${BASE_URL}/health">健康检查</a>
+        </div>
+    </div>
+</body>
+</html>`;
+
+      return new Response(html, {
+        status: 200,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+      });
+    }
+
+    // 14. 退出登录端点
+    if (path === '/admin/logout') {
+      const sessionId = cookies[SESSION_CONFIG.COOKIE_NAME];
+      
+      if (sessionId) {
+        // 删除会话
+        await env.SESSIONS.delete(`session:${sessionId}`);
+      }
+      
+      // 清除Cookie
+      const clearCookie = `${SESSION_CONFIG.COOKIE_NAME}=; Max-Age=0; Path=/; ${SESSION_CONFIG.SECURE ? 'Secure; ' : ''}${SESSION_CONFIG.HTTP_ONLY ? 'HttpOnly; ' : ''}SameSite=${SESSION_CONFIG.SAME_SITE}`;
+      
+      return new Response(JSON.stringify({ 
+        success: true,
+        message: '已成功退出登录'
+      }), {
+        status: 200,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Set-Cookie': clearCookie,
+          ...handleCORS(request)
+        }
+      });
+    }
+
+    // 15. 默认响应（未匹配到任何路由）
+    return new Response('未找到页面', {
+      status: 404,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+    });
+  }
+}
