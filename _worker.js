@@ -2,7 +2,7 @@ export default {
   async fetch(request, env, ctx) {
     // ========== 配置参数 ==========
     const ALLOWED_USER_AGENT_KEYWORD = 'okhttp';
-    const REDIRECT_URL = 'https://www.baidu.com';
+    //const REDIRECT_URL = 'https://www.baidu.com';
     const CONFIG_FILE_NAME = 'TEST.json';
 
     // ========== 1. 获取请求基本信息 ==========
