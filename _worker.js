@@ -16,15 +16,15 @@ export default {
         return Response.redirect(REDIRECT_URL, 302);
       }
 
-      // ========== 2. 关键修复：检查KV绑定 ==========
+      // ========== 2. 关键修复：确保KV绑定 ==========
       if (!env.TOKEN_KV) {
-        throw new Error('TOKEN_KV namespace is not bound. Please bind KV namespace in Worker settings');
+        throw new Error('TOKEN_KV namespace is not bound');
       }
 
       // ========== 3. 路由处理 ==========
       switch (action) {
         case 'generate_token':
-          return await handleTokenGeneration(env, url);
+          return await handleTokenGeneration(env, request, url);
         default:
           return new Response('Available actions: generate_token', { status: 400 });
       }
@@ -32,10 +32,7 @@ export default {
       return new Response(JSON.stringify({
         error: "Internal Server Error",
         message: error.message,
-        solution: error.message.includes('TOKEN_KV') 
-          ? "1. Go to Worker Settings → Variables → KV Namespace Bindings\n" +
-            "2. Bind a KV namespace to 'TOKEN_KV'"
-          : "Check Cloudflare Worker logs for details"
+        solution: "Check Cloudflare Worker logs"
       }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
@@ -44,7 +41,7 @@ export default {
   }
 };
 
-async function handleTokenGeneration(env, url) {
+async function handleTokenGeneration(env, request, url) {
   // ========== 1. 管理员验证 ==========
   const ADMIN_KEY = env.AUTH_TOKEN || 'Ardis-417062';
   const inputKey = url.searchParams.get('admin_key');
