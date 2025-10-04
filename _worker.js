@@ -1,4 +1,5 @@
-// _worker.js - 完整修复版本（无乱码）
+// _worker.js - 完整修复版本（无乱码，功能完整）
+
 export default {
   async fetch(request, env, ctx) {
     // 从环境变量获取域名配置
@@ -47,7 +48,7 @@ export default {
       };
     }
 
-    // 配置参数（完全使用环境变量）
+    // 配置参数（支持环境变量覆盖）
     const CONFIG = {
       ALLOWED_USER_AGENTS: ['okhttp', 'tvbox', '影视仓'],
       REDIRECT_URL: env.REDIRECT_URL || `${BASE_URL}/fallback`,
@@ -90,7 +91,50 @@ export default {
       return cookies;
     }
 
-    // 2. 处理OPTIONS预检请求
+    // 2. 生成随机验证码函数
+    function generateOneTimeCode(length = CONFIG.ONETIME_CODE_LENGTH) {
+      const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let code = '';
+      for (let i = 0; i < length; i++) {
+        code += characters.charAt(Math.floor(Math.random() * characters.length));
+      }
+      return code;
+    }
+
+    // 3. 生成设备ID函数
+    async function generateDeviceId(userAgent, clientIp) {
+      const fingerprint = `${userAgent}:${clientIp}`;
+      const encoder = new TextEncoder();
+      const data = encoder.encode(fingerprint);
+      
+      const hash = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hash));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
+    }
+
+    // 4. 生成会话ID函数
+    function generateSessionId() {
+      return crypto.randomUUID();
+    }
+
+    // 5. 验证管理员会话函数
+    async function validateAdminSession() {
+      const sessionId = cookies[SESSION_CONFIG.COOKIE_NAME];
+      if (!sessionId) return false;
+      
+      try {
+        const sessionData = await env.SESSIONS.get(`session:${sessionId}`);
+        if (sessionData) {
+          const data = JSON.parse(sessionData);
+          return new Date(data.expires_at) > new Date();
+        }
+      } catch (error) {
+        console.error('会话验证错误:', error);
+      }
+      return false;
+    }
+
+    // 6. 处理OPTIONS预检请求
     if (method === 'OPTIONS') {
       return new Response(null, {
         status: 204,
@@ -98,7 +142,7 @@ export default {
       });
     }
 
-    // 3. 根路径 - 服务主页
+    // 7. 根路径 - 服务主页（显示当前配置信息）
     if (path === '/' || path === '') {
       // 检查是否有token参数（设备激活）
       if (queryParams.has('token')) {
@@ -245,7 +289,7 @@ export default {
       });
     }
 
-    // 4. 健康检查端点
+    // 8. 健康检查端点
     if (path === '/health') {
       return new Response(JSON.stringify({
         status: 'healthy',
@@ -284,7 +328,7 @@ export default {
       });
     }
 
-    // 5. 生成验证码端点
+    // 9. 生成验证码端点
     if (path === '/generate-code' && method === 'POST') {
       try {
         const isLoggedIn = await validateAdminSession();
@@ -338,11 +382,11 @@ export default {
             'Content-Type': 'application/json',
             ...handleCORS(request)
           }
-      });
+        });
       }
     }
 
-    // 6. 管理员登录页面
+    // 10. 管理员登录页面
     if (path === '/admin/login') {
       const loginHtml = `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -416,7 +460,7 @@ export default {
       });
     }
 
-    // 7. 登录认证端点
+    // 11. 登录认证端点
     if (path === '/admin/auth' && method === 'POST') {
       try {
         const authData = await request.json();
@@ -479,7 +523,7 @@ export default {
       }
     }
 
-    // 8. 设备列表端点
+    // 12. 设备列表端点
     if (path === '/admin/devices') {
       const isLoggedIn = await validateAdminSession();
       if (!isLoggedIn) {
@@ -557,7 +601,7 @@ export default {
       }
     }
 
-    // 9. 管理员面板
+    // 13. 管理员面板
     if (path === '/admin') {
       const isLoggedIn = await validateAdminSession();
       if (!isLoggedIn) {
@@ -601,111 +645,4 @@ export default {
         </div>
 
         <div>
-            <a href="${BASE_URL}/">返回首页</a> | 
-            <a href="${BASE_URL}/health">健康检查</a>
-        </div>
-    </div>
-</body>
-</html>`;
-
-      return new Response(html, {
-        status: 200,
-        headers: { 'Content-Type': 'text/html; charset=utf-8' }
-      });
-    }
-
-    // 10. 退出登录端点
-    if (path === '/admin/logout') {
-      const sessionId = cookies[SESSION_CONFIG.COOKIE_NAME];
-      
-      if (sessionId) {
-        // 删除会话
-        await env.SESSIONS.delete(`session:${sessionId}`);
-      }
-      
-      // 清除Cookie
-      const clearCookie = `${SESSION_CONFIG.COOKIE_NAME}=; Max-Age=0; Path=/; ${SESSION_CONFIG.SECURE ? 'Secure; ' : ''}${SESSION_CONFIG.HTTP_ONLY ? 'HttpOnly; ' : ''}SameSite=${SESSION_CONFIG.SAME_SITE}`;
-      
-      return new Response(JSON.stringify({
-        success: true,
-        message: '已退出登录'
-      }), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Set-Cookie': clearCookie,
-          ...handleCORS(request)
-        }
-      });
-    }
-
-    // ==================== 辅助函数 ====================
-    
-    // 生成随机验证码函数
-    function generateOneTimeCode(length = CONFIG.ONETIME_CODE_LENGTH) {
-      const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-      let code = '';
-      for (let i = 0; i < length; i++) {
-        code += characters.charAt(Math.floor(Math.random() * characters.length));
-      }
-      return code;
-    }
-
-    // 生成设备ID函数
-    async function generateDeviceId(userAgent, clientIp) {
-      const fingerprint = `${userAgent}:${clientIp}`;
-      const encoder = new TextEncoder();
-      const data = encoder.encode(fingerprint);
-      
-      const hash = await crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hash));
-      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
-    }
-
-    // 生成会话ID函数
-    function generateSessionId() {
-      return crypto.randomUUID();
-    }
-
-    // 验证管理员会话函数
-    async function validateAdminSession() {
-      const sessionId = cookies[SESSION_CONFIG.COOKIE_NAME];
-      if (!sessionId) return false;
-      
-      try {
-        const sessionData = await env.SESSIONS.get(`session:${sessionId}`);
-        if (sessionData) {
-          const data = JSON.parse(sessionData);
-          return new Date(data.expires_at) > new Date();
-        }
-      } catch (error) {
-        console.error('会话验证错误:', error);
-      }
-      return false;
-    }
-
-    // 11. 处理未知路径
-    return new Response(JSON.stringify({
-      error: 'Not Found',
-      requested_path: path,
-      current_domain: YOUR_DOMAIN,
-      available_endpoints: [
-        `${BASE_URL}/`,
-        `${BASE_URL}/health`,
-        `${BASE_URL}/admin/login`,
-        `${BASE_URL}/admin/auth`,
-        `${BASE_URL}/generate-code`,
-        `${BASE_URL}/admin`,
-        `${BASE_URL}/admin/devices`,
-        `${BASE_URL}/admin/logout`
-      ],
-      config_note: '域名通过环境变量 WORKER_DOMAIN 配置'
-    }), {
-      status: 404,
-      headers: {
-        'Content-Type': 'application/json',
-        ...handleCORS(request)
-      }
-    });
-  }
-};
+            <a href="${BASE_URL}/">
