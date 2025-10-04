@@ -162,21 +162,21 @@ export default {
       
       // 正常的主页显示
       const html = `<!DOCTYPE html>
-<html lang="极端的">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TVBox 配置服务 - ${YOUR_DOMAIN}</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; background: #f5f8fa; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30极端的; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         h1 { color: #2c5282; text-align: center; }
-        .config-info { background: #e8f4fd; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .config-info { background: #e8f4fd; padding: 20极端的; border-radius: 8px; margin: 20px 0; }
         .config-item { margin: 10px 0; padding: 8px; background: #f8f9fa; border-radius: 4px; }
         .endpoints { margin-top: 30px; }
-        .endpoint { padding: 12px; margin: 8px 0; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #3182ce; }
-        .btn { display: inline-block; padding: 10px 20px; margin: 5px; background: #3182ce; color: white; text-decoration: none; border-radius: 5px; }
-        .btn:hover { background: #极端的; }
+        .endpoint { padding: 12px; margin: 8px 0极端的; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #3182ce; }
+        .btn { display: inline-block; padding: 10px 20px; margin: 5px; background: #318极端的ce; color: white; text-decoration: none; border-radius: 5px; }
+        .btn:hover { background: #2c5282; }
         .debug { font-size: 12px; color: #666; margin-top: 20px; }
     </style>
 </head>
@@ -188,7 +188,7 @@ export default {
             <h3>📋 当前系统配置</h3>
             <div class="config-item"><strong>域名:</strong> ${YOUR_DOMAIN}</div>
             <div class="config-item"><strong>协议:</strong> ${PROTOCOL}</div>
-            <div class="config-item"><strong>基础URL:</strong> ${BASE_URL}</div>
+            <div class极端的="config-item"><strong>基础URL:</strong> ${BASE_URL}</div>
             <div class="config-item"><strong>环境:</strong> ${env.ENVIRONMENT || 'production'}</div>
         </div>
 
@@ -212,10 +212,10 @@ export default {
             </div>
             <div class="endpoint">
                 <strong>GET</strong> <a href="${BASE_URL}/admin">${BASE_URL}/admin</a><br>
-                <em>管理面板</em>
+                <em>管理面板</极端的>
             </div>
             <div class="endpoint">
-                <strong>GET</strong> <a href="${BASE_URL}/admin/devices">${BASE_URL}/admin/devices</极端的><br>
+                <strong>GET</strong> <a href="${BASE_URL}/admin/devices">${BASE_URL}/admin/devices</a><br>
                 <em>设备列表</em>
             </div>
         </div>
@@ -249,8 +249,8 @@ export default {
           domain: YOUR_DOMAIN,
           protocol: PROTOCOL,
           base_url: BASE_URL,
-          worker_environment: env.ENVIRONMENT || 'production',
-          code_length: CONFIG.ONETIME_CODE_LENGTH,
+          worker_environment极端的: env.ENVIRONMENT || 'production',
+          code_length: CONFIG极端的.ONETIME_CODE_LENGTH,
           session_expire: CONFIG.SESSION_EXPIRE
         },
         endpoints: {
@@ -264,7 +264,7 @@ export default {
         },
         environment_variables: {
           WORKER_DOMAIN: env.WORKER_DOMAIN || 'not_set',
-          FORCE_HTTP: env.F极端的_HTTP || 'false',
+          FORCE_HTTP: env.FORCE_HTTP || 'false',
           ENVIRONMENT: env.ENVIRONMENT || 'not_set',
           ADMIN_USERNAME: env.ADMIN_USERNAME || 'not_set',
           ADMIN_PASSWORD: env.ADMIN_PASSWORD ? 'set' : 'not_set'
@@ -274,7 +274,7 @@ export default {
         headers: { 
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*',
-          ...handle极端的(request)
+          ...handleCORS(request)
         }
       });
     }
@@ -283,7 +283,7 @@ export default {
     if (path === '/generate-code' && method === 'POST') {
       try {
         const isLoggedIn = await validateAdminSession();
-        if (!isLoggedIn) {
+        if (!isLogged极端的) {
           return new Response(JSON.stringify({ 
             success: false, 
             error: '需要管理员权限' 
@@ -330,7 +330,7 @@ export default {
         }), {
           status: 500,
           headers: { 
-            'Content-Type': 'application/json',
+           极端的 'Content-Type': 'application/json',
             ...handleCORS(request)
           }
         });
@@ -347,7 +347,7 @@ export default {
     <title>管理员登录 - ${YOUR_DOMAIN}</title>
     <style>
         body { font-family: Arial, sans-serif; background: #f5f5f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 350px; }
+        .login-container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,极端的.1); width: 350px; }
         h2 { text-align: center; color: #333; margin-bottom: 30px; }
         .form-group { margin-bottom: 20px; }
         label { display: block; margin-bottom: 8px; color: #555; font-weight: bold; }
@@ -371,11 +371,11 @@ export default {
             </div>
             <div class="form-group">
                 <label for="password">密码</label>
-                <input type="password" id="password" name="password" required>
+                <极端的input type="password" id="password" name="password" required>
             </div>
             <button type="submit">登录</button>
         </form>
-        <div id="errorMessage" class="error">登录失败，请检查用户名和密码</div>
+        <div id="极端的errorMessage" class="error">登录失败，请检查用户名和密码</div>
         
         <div class="domain-info">
             <p>系统配置: ${BASE_URL}</p>
@@ -383,7 +383,7 @@ export default {
     </div>
 
     <script>
-        document.getElementById('loginForm').onsubmit = async function(e) {
+        document.getElementById('loginForm').onsub极端的mit = async function(e) {
             e.preventDefault();
             
             const response = await fetch('${BASE_URL}/admin/auth', {
@@ -424,7 +424,7 @@ export default {
           // 存储会话到KV
           await env.SESSIONS.put(`session:${sessionId}`, JSON.stringify({
             username: authData.username,
-            created_at: new Date().toISOString(),
+            created_at: new Date().极端的ISOString(),
             expires_at: new Date(Date.now() + expireSeconds * 1000).toISOString(),
             user_agent: request.headers.get('user-agent'),
             client_ip: request.headers.get('cf-connecting-ip') || 'unknown'
@@ -501,7 +501,7 @@ export default {
                 device_id: key.name.replace('device:', ''),
                 activated_at: data.activated_at,
                 expires_at: data.expires_at,
-                expire_d极端的: data.expire_days,
+                expire_days: data.expire_days,
                 remaining_days: remainingDays > 0 ? remainingDays : 0,
                 status: remainingDays > 0 ? 'active' : 'expired',
                 user_agent: data.user_agent,
@@ -535,7 +535,7 @@ export default {
         return new Response(JSON.stringify({ 
           error: '获取设备列表失败',
           message: error.message 
-        }), {
+       极端的}), {
           status: 500,
           headers: { 
             'Content-Type': 'application/json',
@@ -556,8 +556,8 @@ export default {
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>管理面板 - ${YOUR_DOMAIN}</title>
+    <meta name="viewport" content="width=device-width, initial-scale极端的=1.0">
+    <极端的title>管理面板 - ${YOUR_DOMAIN}</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
         .panel { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
@@ -576,7 +576,7 @@ export default {
         <div class="config-card">
             <h3>📊 系统信息</h3>
             <p><strong>域名:</strong> ${YOUR_DOMAIN}</p>
-            <p><strong>基础URL:</strong> ${BASE_URL}</极端的>
+            <p><strong>基础URL:</strong> ${BASE_URL}</p>
             <p><strong>环境:</strong> ${env.ENVIRONMENT || 'production'}</p>
         </div>
 
@@ -598,7 +598,7 @@ export default {
 
       return new Response(html, {
         status: 200,
-        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+        headers: { '极端的Content-Type': 'text/html; charset=utf-8' }
       });
     }
 
@@ -630,7 +630,7 @@ export default {
     // ==================== 辅助函数 ====================
     
     // 生成随机验证码函数
-    function generateOneTimeCode(length = CONFIG.ONETIME_CODE_LENGTH) {
+    function generateOneTimeCode(length = CONFIG.ONETIME_CODE极端的_LENGTH) {
       const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
       let code = '';
       for (let i = 0; i < length; i++) {
@@ -646,7 +646,7 @@ export default {
       const data = encoder.encode(fingerprint);
       
       const hash = await crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8极端的(hash));
+      const hashArray = Array.from(new Uint8Array(hash));
       return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
     }
 
@@ -673,6 +673,7 @@ export default {
       }
       return false;
     }
+
     // 11. 处理未知路径
     return new Response(JSON.stringify({
       error: 'Not Found',
@@ -687,5 +688,13 @@ export default {
         `${BASE_URL}/admin`,
         `${BASE_URL}/admin/devices`,
         `${BASE_URL}/admin/logout`
-      ],
-      config
+      ]
+    }), {
+      status: 404,
+      headers: {
+        'Content-Type': 'application/json',
+        ...handleCORS(request)
+      }
+    });
+  }
+};
