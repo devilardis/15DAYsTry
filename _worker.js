@@ -3,12 +3,11 @@ export default {
     // ========== 配置参数 ==========
     const ALLOWED_USER_AGENT_KEYWORD = 'okhttp';        // 合法UA必须包含的关键词
     const REDIRECT_URL = 'https://www.baidu.com';       // 非法请求重定向地址
-    const JSON_CONFIG_URL_ENV_VAR = 'JSON_CONFIG_URL';  // 存储真实配置URL的环境变量名
+    const JSON_CONFIG_URL_ENV_VAR = 'JSON_CONFIG_URL';  // 存储配置URL的环境变量名
     const CACHE_MAX_AGE_ENV_VAR = 'CACHE_MAX_AGE';      // 存储缓存时间的环境变量名
 
     // ========== 1. 获取请求基本信息 ==========
     const userAgent = request.headers.get('User-Agent') || '';
-    const incomingUrl = new URL(request.url);
 
     // ========== 2. UA 验证：只允许包含 okhttp 的UA ==========
     const isUAValid = userAgent.includes(ALLOWED_USER_AGENT_KEYWORD);
@@ -18,40 +17,15 @@ export default {
     }
 
     // ========== 3. 获取配置文件的真实地址 ==========
-    // 【关键】从环境变量读取 JSON_CONFIG_URL，其值应为 https://try-65y.pages.dev/
     const realConfigUrl = env[JSON_CONFIG_URL_ENV_VAR];
     if (!realConfigUrl) {
-      return new Response('Server Error: Missing configuration source', { 
+      return new Response('Server Error: Missing JSON_CONFIG_URL environment variable', { 
         status: 500,
         headers: { 'Content-Type': 'text/plain' }
       });
     }
 
-    // ========== 【新增】4. 检查循环调用 ==========
-    // 解析环境变量中的URL和当前请求的URL，比较它们的主机名
-    const configUrlObj = new URL(realConfigUrl);
-    const isSelfRequest = configUrlObj.hostname === incomingUrl.hostname;
-
-    if (isSelfRequest) {
-      // 【关键】如果配置源指向自己，则返回一个固定的配置响应，避免循环
-      console.log('[Worker] ⚠️  Detected self-request, returning fixed config to break recursion.');
-      
-      // 这里返回一个示例JSON配置，您需要替换为实际的配置内容
-      const fixedConfig = {
-        "version": "1.0",
-        "data": "This is the fixed configuration returned to avoid recursive calls.",
-        "self_request": true
-      };
-
-      return new Response(JSON.stringify(fixedConfig, null, 2), {
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'max-age=3600'
-        }
-      });
-    }
-
-    // ========== 5. 获取缓存时间配置 ==========
+    // ========== 4. 获取缓存时间配置 ==========
     let cacheMaxAgeSeconds = 86400; // 默认24小时
     try {
       const envCacheMaxAge = env[CACHE_MAX_AGE_ENV_VAR];
@@ -68,41 +42,60 @@ export default {
 
     // ========================【缓存逻辑开始】============================
     const cache = caches.default;
-    const cacheKey = new Request(realConfigUrl);
+    const cacheKey = new Request(realConfigUrl); // 使用配置URL作为缓存键
 
+    // 首先尝试从缓存获取
     let cachedResponse = await cache.match(cacheKey);
     if (cachedResponse) {
-      console.log('[Worker] ✅ Cache HIT');
+      console.log('[Worker] ✅ Cache HIT - Returning cached config');
       return cachedResponse;
     }
 
-    console.log('[Worker] ❌ Cache MISS');
+    console.log('[Worker] ❌ Cache MISS - Fetching from origin');
 
     try {
+      // ========== 5. 向真实配置源发起HTTP请求 ==========
       const originResponse = await fetch(realConfigUrl);
       
       if (!originResponse.ok) {
         return new Response(`Origin server error: ${originResponse.status}`, {
-          status: originResponse.status
+          status: originResponse.status,
+          headers: { 'Content-Type': 'text/plain' }
         });
       }
 
+      // ========== 6. 响应头处理（重要！） ==========
+      // 创建新的Headers对象，复制源站的所有响应头
       const cacheHeaders = new Headers(originResponse.headers);
+      
+      // 强制覆盖Cache-Control头，设置我们想要的缓存时间
       cacheHeaders.set('Cache-Control', `max-age=${cacheMaxAgeSeconds}`);
+      // 也可以设置CDN专用的缓存头
+      cacheHeaders.set('CDN-Cache-Control', `max-age=${cacheMaxAgeSeconds}`);
+      
+      // 确保Content-Type正确
+      if (!cacheHeaders.has('Content-Type')) {
+        cacheHeaders.set('Content-Type', 'application/json; charset=utf-8');
+      }
 
+      // ========== 7. 创建可缓存的响应 ==========
       const responseToCache = new Response(originResponse.body, {
         status: originResponse.status,
         headers: cacheHeaders
       });
 
+      // 异步存储到缓存
       ctx.waitUntil(cache.put(cacheKey, responseToCache.clone()));
       
-      console.log(`[Worker] ✅ Config cached for ${cacheMaxAgeSeconds}s`);
+      console.log(`[Worker] ✅ Config fetched and cached for ${cacheMaxAgeSeconds} seconds`);
       return responseToCache;
 
     } catch (error) {
       console.error('[Worker] Fetch error:', error);
-      return new Response('Internal Server Error', { status: 500 });
+      return new Response('Internal Server Error: Failed to fetch configuration', {
+        status: 500,
+        headers: { 'Content-Type': 'text/plain' }
+      });
     }
     // ========================【缓存逻辑结束】==============================
   }
