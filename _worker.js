@@ -627,6 +627,52 @@ export default {
       });
     }
 
+    // ==================== 辅助函数 ====================
+    
+    // 生成随机验证码函数
+    function generateOneTimeCode(length = CONFIG.ONETIME_CODE_LENGTH) {
+      const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let code = '';
+      for (let i = 0; i < length; i++) {
+        code += characters.charAt(Math.floor(Math.random() * characters.length));
+      }
+      return code;
+    }
+
+    // 生成设备ID函数
+    async function generateDeviceId(userAgent, clientIp) {
+      const fingerprint = `${userAgent}:${clientIp}`;
+      const encoder = new TextEncoder();
+      const data = encoder.encode(fingerprint);
+      
+      const hash = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8极端的(hash));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
+    }
+
+    // 生成会话ID函数
+    function generateSessionId() {
+      return crypto.randomUUID();
+    }
+
+    // 验证管理员会话函数
+    async function validateAdminSession() {
+      const sessionId = cookies[SESSION_CONFIG.COOKIE_NAME];
+      if (!sessionId) return false;
+      
+      try {
+        const sessionData = await env.SESSIONS.get(`session:${sessionId}`);
+        if (sessionData) {
+          const data = JSON.parse(sessionData);
+          if (new Date(data.expires_at) > new Date()) {
+            return true;
+          }
+        }
+      } catch (error) {
+        console.error('会话验证错误:', error);
+      }
+      return false;
+    }
     // 11. 处理未知路径
     return new Response(JSON.stringify({
       error: 'Not Found',
