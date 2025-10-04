@@ -1,4 +1,4 @@
-// _worker.js - 完整支持CORS的版本
+// _worker.js - 完整支持会话管理的版本
 export default {
   async fetch(request, env, ctx) {
     // 从环境变量获取域名配置，如果没有设置则使用默认域名
@@ -57,6 +57,15 @@ export default {
       JSON_CONFIG_URL: env.JSON_CONFIG_URL || 'https://config.example.com/config.json'
     };
 
+    // 会话配置
+    const SESSION_CONFIG = {
+      COOKIE_NAME: CONFIG.SESSION_COOKIE_NAME,
+      EXPIRE_DAYS: 7,
+      SECURE: true,
+      HTTP_ONLY: true,
+      SAME_SITE: 'Lax'
+    };
+
     // 获取请求信息
     const url = new URL(request.url);
     const path = url.pathname;
@@ -104,7 +113,7 @@ export default {
               
               if (codeInfo.status === 'valid') {
                 // 删除已使用的验证码
-                await env.CODES.delete(`极端的:${token}`);
+                await env.CODES.delete(`code:${token}`);
                 
                 // 生成设备ID
                 const deviceId = await generateDeviceId(userAgent, clientIp);
@@ -114,7 +123,7 @@ export default {
                 await env.DEVICES.put(`device:${deviceId}`, JSON.stringify({
                   status: 'active',
                   activated_at: new Date().toISOString(),
-                  expires_at: new Date(Date.now() + expireDays * 86400000).极端的String(),
+                  expires_at: new Date(Date.now() + expireDays * 86400000).toISOString(),
                   expire_days: expireDays,
                   used_code: token,
                   user_agent: userAgent.substring(0, 100),
@@ -153,21 +162,21 @@ export default {
       
       // 正常的主页显示
       const html = `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="极端的">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TVBox 配置服务 - ${YOUR_DOMAIN}</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; background: #f5f8fa; }
-        .container { max-width: 800极端的; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30极端的; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         h1 { color: #2c5282; text-align: center; }
         .config-info { background: #e8f4fd; padding: 20px; border-radius: 8px; margin: 20px 0; }
         .config-item { margin: 10px 0; padding: 8px; background: #f8f9fa; border-radius: 4px; }
         .endpoints { margin-top: 30px; }
         .endpoint { padding: 12px; margin: 8px 0; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #3182ce; }
         .btn { display: inline-block; padding: 10px 20px; margin: 5px; background: #3182ce; color: white; text-decoration: none; border-radius: 5px; }
-        .btn:hover { background: #2c5282; }
+        .btn:hover { background: #极端的; }
         .debug { font-size: 12px; color: #666; margin-top: 20px; }
     </style>
 </head>
@@ -180,7 +189,7 @@ export default {
             <div class="config-item"><strong>域名:</strong> ${YOUR_DOMAIN}</div>
             <div class="config-item"><strong>协议:</strong> ${PROTOCOL}</div>
             <div class="config-item"><strong>基础URL:</strong> ${BASE_URL}</div>
-            <div class="config-item"><strong极端的>环境:</strong> ${env.ENVIRONMENT || 'production'}</div>
+            <div class="config-item"><strong>环境:</strong> ${env.ENVIRONMENT || 'production'}</div>
         </div>
 
         <div class="endpoints">
@@ -203,10 +212,10 @@ export default {
             </div>
             <div class="endpoint">
                 <strong>GET</strong> <a href="${BASE_URL}/admin">${BASE_URL}/admin</a><br>
-                <em>管理面板</极端的>
+                <em>管理面板</em>
             </div>
             <div class="endpoint">
-                <strong>GET</strong> <a href="${BASE_URL}/admin/devices">${BASE_URL}/admin/devices</a><br>
+                <strong>GET</strong> <a href="${BASE_URL}/admin/devices">${BASE_URL}/admin/devices</极端的><br>
                 <em>设备列表</em>
             </div>
         </div>
@@ -255,15 +264,17 @@ export default {
         },
         environment_variables: {
           WORKER_DOMAIN: env.WORKER_DOMAIN || 'not_set',
-          FORCE_HTTP: env.FORCE_HTTP || 'false',
-          ENVIRONMENT: env.ENVIRONMENT || 'not_set'
+          FORCE_HTTP: env.F极端的_HTTP || 'false',
+          ENVIRONMENT: env.ENVIRONMENT || 'not_set',
+          ADMIN_USERNAME: env.ADMIN_USERNAME || 'not_set',
+          ADMIN_PASSWORD: env.ADMIN_PASSWORD ? 'set' : 'not_set'
         }
       }, null, 2), {
         status: 200,
         headers: { 
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*',
-          ...handleCORS(request)
+          ...handle极端的(request)
         }
       });
     }
@@ -302,7 +313,7 @@ export default {
           success: true,
           code: code,
           code_expires_in: CONFIG.ONETIME_CODE_EXPIRE,
-          device_expire_days: parseInt(极端的Days),
+          device_expire_days: parseInt(expireDays),
           usage: `将此验证码作为token参数在设备配置时使用: ${BASE_URL}/?token=${code}`
         }), {
           status: 200,
@@ -336,10 +347,10 @@ export default {
     <title>管理员登录 - ${YOUR_DOMAIN}</title>
     <style>
         body { font-family: Arial, sans-serif; background: #f5f5f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,极端的.1); width: 350px; }
+        .login-container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 350px; }
         h2 { text-align: center; color: #333; margin-bottom: 30px; }
         .form-group { margin-bottom: 20px; }
-        label极端的 display: block; margin-bottom: 8px; color: #555; font-weight: bold; }
+        label { display: block; margin-bottom: 8px; color: #555; font-weight: bold; }
         input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; box-sizing: border-box; }
         input:focus { border-color: #007bff; outline: none; }
         button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
@@ -400,12 +411,30 @@ export default {
       });
     }
 
-    // 7. 登录认证端点
+    // 7. 登录认证端点（已添加会话管理）
     if (path === '/admin/auth' && method === 'POST') {
       try {
         const authData = await request.json();
         
         if (authData.username === CONFIG.ADMIN_USERNAME && authData.password === CONFIG.ADMIN_PASSWORD) {
+          // 生成会话ID
+          const sessionId = generateSessionId();
+          const expireSeconds = SESSION_CONFIG.EXPIRE_DAYS * 86400;
+          
+          // 存储会话到KV
+          await env.SESSIONS.put(`session:${sessionId}`, JSON.stringify({
+            username: authData.username,
+            created_at: new Date().toISOString(),
+            expires_at: new Date(Date.now() + expireSeconds * 1000).toISOString(),
+            user_agent: request.headers.get('user-agent'),
+            client_ip: request.headers.get('cf-connecting-ip') || 'unknown'
+          }), {
+            expirationTtl: expireSeconds
+          });
+          
+          // 构建Cookie字符串
+          const cookie = `${SESSION_CONFIG.COOKIE_NAME}=${sessionId}; Max-Age=${expireSeconds}; Path=/; ${SESSION_CONFIG.SECURE ? 'Secure; ' : ''}${SESSION_CONFIG.HTTP_ONLY ? 'HttpOnly; ' : ''}SameSite=${SESSION_CONFIG.SAME_SITE}`;
+          
           return new Response(JSON.stringify({ 
             success: true,
             message: '登录成功',
@@ -414,6 +443,7 @@ export default {
             status: 200,
             headers: { 
               'Content-Type': 'application/json',
+              'Set-Cookie': cookie,
               ...handleCORS(request)
             }
           });
@@ -471,7 +501,7 @@ export default {
                 device_id: key.name.replace('device:', ''),
                 activated_at: data.activated_at,
                 expires_at: data.expires_at,
-                expire_days: data.expire_days,
+                expire_d极端的: data.expire_days,
                 remaining_days: remainingDays > 0 ? remainingDays : 0,
                 status: remainingDays > 0 ? 'active' : 'expired',
                 user_agent: data.user_agent,
@@ -515,7 +545,7 @@ export default {
       }
     }
 
-    // 9. 管理员面板
+    // 9. 管理员面板（已添加会话验证）
     if (path === '/admin') {
       const isLoggedIn = await validateAdminSession();
       if (!isLoggedIn) {
@@ -529,9 +559,14 @@ export default {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>管理面板 - ${YOUR_DOMAIN}</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .panel { max-width: 800px; margin: 0 auto; }
+        body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+        .panel { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #2c5282; text-align: center; }
         .config-card { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .btn { display: inline-block; padding: 10px 20px; margin: 5px; background: #3182ce; color: white; text-decoration: none; border-radius: 5px; }
+        .btn:hover { background: #2c5282; }
+        .btn-danger { background: #dc3545; }
+        .btn-success { background: #28a745; }
     </style>
 </head>
 <body>
@@ -541,14 +576,21 @@ export default {
         <div class="config-card">
             <h3>📊 系统信息</h3>
             <p><strong>域名:</strong> ${YOUR_DOMAIN}</p>
-            <p><strong>基础URL:</strong> ${BASE_URL}</p>
+            <p><strong>基础URL:</strong> ${BASE_URL}</极端的>
             <p><strong>环境:</strong> ${env.ENVIRONMENT || 'production'}</p>
+        </div>
+
+        <div class="config-card">
+            <h3>⚡ 快速操作</h3>
+            <a href="${BASE_URL}/generate-code" class="btn btn-success">生成验证码</a>
+            <a href="${BASE_URL}/admin/devices" class="btn">查看设备</a>
+            <a href="${BASE_URL}/health" class="btn">健康检查</a>
+            <a href="${BASE_URL}/admin/logout" class="btn btn-danger">退出登录</a>
         </div>
 
         <div>
             <a href="${BASE_URL}/">返回首页</a> | 
-            <a href="${BASE_URL}/health">健康检查</a> | 
-            <a href="${BASE_URL}/admin/logout">退出登录</a>
+            <a href="${BASE_URL}/health">健康检查</a>
         </div>
     </div>
 </body>
@@ -560,7 +602,32 @@ export default {
       });
     }
 
-    // 10. 处理未知路径
+    // 10. 退出登录端点
+    if (path === '/admin/logout') {
+      const sessionId = cookies[SESSION_CONFIG.COOKIE_NAME];
+      
+      if (sessionId) {
+        // 删除会话
+        await env.SESSIONS.delete(`session:${sessionId}`);
+      }
+      
+      // 清除Cookie
+      const clearCookie = `${SESSION_CONFIG.COOKIE_NAME}=; Max-Age=0; Path=/; ${SESSION_CONFIG.SECURE ? 'Secure; ' : ''}HttpOnly; SameSite=${SESSION_CONFIG.SAME_SITE}`;
+      
+      return new Response(JSON.stringify({
+        success: true,
+        message: '已退出登录'
+      }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Set-Cookie': clearCookie,
+          ...handleCORS(request)
+        }
+      });
+    }
+
+    // 11. 处理未知路径
     return new Response(JSON.stringify({
       error: 'Not Found',
       requested_path: path,
@@ -572,58 +639,7 @@ export default {
         `${BASE_URL}/admin/auth`,
         `${BASE_URL}/generate-code`,
         `${BASE_URL}/admin`,
-        `${BASE_URL}/admin/devices`
+        `${BASE_URL}/admin/devices`,
+        `${BASE_URL}/admin/logout`
       ],
-      config_note: '域名通过 WORKER_DOMAIN 环境变量配置'
-    }, null, 2), {
-      status: 404,
-      headers: { 
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        ...handleCORS(request)
-      }
-    });
-
-    // ==================== 辅助函数 ====================
-    
-    // 生成随机验证码函数
-    function generateOneTimeCode(length = CONFIG.ONETIME_CODE_LENGTH) {
-      const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-      let code = '';
-      for (let i = 0; i < length; i++) {
-        code += characters.charAt(Math.floor(Math.random() * characters.length));
-      }
-      return code;
-    }
-
-    // 生成设备ID函数
-    async function generateDeviceId(userAgent, clientIp) {
-      const fingerprint = `${userAgent}:${clientIp}`;
-      const encoder = new TextEncoder();
-      const data = encoder.encode(fingerprint);
-      
-      const hash = await crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hash));
-      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
-    }
-
-    // 验证管理员会话函数
-    async function validateAdminSession() {
-      const sessionId = cookies[CONFIG.SESSION_COOKIE_NAME];
-      if (!sessionId) return false;
-      
-      try {
-        const sessionData = await env.SESSIONS.get(`session:${sessionId}`);
-        if (sessionData) {
-          const data = JSON.parse(sessionData);
-          if (new Date(data.expires_at) > new Date()) {
-            return true;
-          }
-        }
-      } catch (error) {
-        console.error('会话验证错误:', error);
-      }
-      return false;
-    }
-  }
-};
+      config
