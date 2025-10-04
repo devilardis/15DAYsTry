@@ -1,234 +1,267 @@
-// _worker.js - 第 1 部分：模块导入与全局配置
+// ======================
+// 第 1 部分：模块导入、全局配置、请求初始化与工具函数
+// ======================
 
 export default {
   async fetch(request, env, ctx) {
-    // ======================
-    // 全局配置
-    // ======================
+    // 从环境变量获取域名配置，如果没有设置则使用默认域名
+    const YOUR_DOMAIN = env.WORKER_DOMAIN || 'try15d.pages.dev';
+    const PROTOCOL = env.FORCE_HTTP === 'true' ? 'http' : 'https';
+    const BASE_URL = `${PROTOCOL}://${YOUR_DOMAIN}`;
 
-    const REDIRECT_URL = '/fallback'; // Token无效或过期时重定向的地址
-    const ALLOWED_USER_AGENTS = ['okhttp/4.9.1', 'tvbox', '影视仓']; // 允许激活的设备 User-Agent
+    // 配置参数（支持环境变量覆盖）
+    const CONFIG = {
+      ALLOWED_USER_AGENTS: ['okhttp', 'tvbox', '影视仓'],
+      REDIRECT_URL: `${BASE_URL}/fallback`,
+      ONETIME_CODE_LENGTH: env.CODE_LENGTH ? parseInt(env.CODE_LENGTH) : 12,
+      ONETIME_CODE_EXPIRE: env.CODE_EXPIRE ? parseInt(env.CODE_EXPIRE) : 300,
+      DEVICE_TOKEN_EXPIRE: env.DEVICE_EXPIRE_DAYS ? parseInt(env.DEVICE_EXPIRE_DAYS) * 86400 : 2592000,
+      SESSION_EXPIRE: env.SESSION_EXPIRE ? parseInt(env.SESSION_EXPIRE) : 3600,
+      SESSION_COOKIE_NAME: env.SESSION_COOKIE_NAME || 'admin_session',
+      ADMIN_USERNAME: env.ADMIN_USERNAME || 'admin',
+      ADMIN_PASSWORD: env.ADMIN_PASSWORD || 'password',
+      JSON_CONFIG_URL: env.JSON_CONFIG_URL || 'https://config.example.com/config.json'
+    };
 
-    // 从环境变量中读取最大设备绑定数量，如果未设置则默认为 10
-    const MAX_DEVICES_PER_TOKEN = parseInt(env.MAX_DEVICES_PER_TOKEN) || 10;
-
-    // 从环境变量中读取管理员 TOKEN，如果未设置则报错
-    const ADMIN_TOKEN = env.ADMIN_TOKEN;
-    if (!ADMIN_TOKEN) {
-      console.error('⚠️ 未设置 ADMIN_TOKEN 环境变量。请在 Cloudflare Dashboard 中设置 ADMIN_TOKEN。');
-    }
-
-    // ======================
-    // 请求处理辅助函数：处理 CORS
-    // ======================
-    function handleCORS(request) {
-      const headers = {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      };
-      return headers;
-    }
-
-    // ======================
-    // 路由与逻辑处理
-    // ======================
-
+    // 获取请求信息
     const url = new URL(request.url);
     const path = url.pathname;
+    const method = request.method;
+    const queryParams = url.searchParams;
+    const cookies = parseCookies(request.headers.get('cookie') || '');
 
-    // ======================
-    // 1. 管理员访问后台接口 (/admin)
-    // ======================
-    if (path === '/admin' && request.method === 'GET') {
-      // 从查询参数中获取传递的管理员 TOKEN
-      const url = new URL(request.url);
-      const adminToken = url.searchParams.get('token');
-
-      if (!adminToken) {
-        return new Response(JSON.stringify({ 
-          success: false, 
-          error: '缺少管理员 TOKEN 参数' 
-        }), {
-          status: 400,
-          headers: { 
-            'Content-Type': 'application/json; charset=utf-8',
-            ...handleCORS(request)
-          }
+    // 1. Cookie解析函数
+    function parseCookies(cookieHeader) {
+      const cookies = {};
+      if (cookieHeader) {
+        cookieHeader.split(';').forEach(cookie => {
+          const [name, value] = cookie.trim().split('=');
+          if (name && value) cookies[name] = decodeURIComponent(value);
         });
       }
+      return cookies;
+    }
+    // ====================
+    // 第 2 部分：核心功能函数
+    // ====================
 
-      // 验证管理员 TOKEN 是否与环境变量中的 ADMIN_TOKEN 匹配
-      if (adminToken === ADMIN_TOKEN) {
-        // 管理员 TOKEN 匹配成功，返回成功响应或后台页面内容
-        return new Response(JSON.stringify({ 
-          success: true, 
-          message: '管理员访问后台成功' 
-        }), {
+    // 2. 生成随机验证码函数（设备激活 Token）
+    function generateOneTimeCode(length = CONFIG.ONETIME_CODE_LENGTH) {
+      const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let code = '';
+      for (let i = 0; i < length; i++) {
+        code += characters.charAt(Math.floor(Math.random() * characters.length));
+      }
+      return code;
+    }
+
+    // 3. 生成设备ID函数（基于 UserAgent + IP 哈希）
+    async function generateDeviceId(userAgent, clientIp) {
+      const fingerprint = `${userAgent}:${clientIp}`;
+      const encoder = new TextEncoder();
+      const data = encoder.encode(fingerprint);
+      
+      const hash = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hash));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
+    }
+
+    // 4. 验证管理员会话是否有效
+    async function validateAdminSession() {
+      const sessionId = cookies[CONFIG.SESSION_COOKIE_NAME];
+      if (!sessionId) return false;
+      
+      try {
+        const sessionData = await env.SESSIONS.get(`session:${sessionId}`);
+        if (sessionData) {
+          const data = JSON.parse(sessionData);
+          if (new Date(data.expires_at) > new Date()) {
+            return true;
+          }
+        }
+      } catch (error) {
+        console.error('会话验证错误:', error);
+      }
+      return false;
+    }
+    // ====================
+    // 第 3 部分：管理员相关路由逻辑
+    // ====================
+
+    // 5. 管理员登录页面（GET /admin/login）
+    if (path === '/admin/login') {
+      const loginHtml = `<!DOCTYPE html>
+<html><head><title>管理员登录</title></head><body>
+<h2>管理员登录</h2>
+<form method="POST" action="/admin/auth">
+  用户名: <input type="text" name="username"><br>
+  密码: <input type="password" name="password"><br>
+  <button type="submit">登录</button>
+</form>
+</body></html>`;
+      return new Response(loginHtml, { status: 200, headers: { 'Content-Type': 'text/html' } });
+    }
+
+    // 6. 管理员登录认证（POST /admin/auth）
+    if (path === '/admin/auth' && method === 'POST') {
+      const authData = await request.json();
+      if (authData.username === CONFIG.ADMIN_USERNAME && authData.password === CONFIG.ADMIN_PASSWORD) {
+        const session = crypto.randomUUID();
+        const expires = new Date(Date.now() + CONFIG.SESSION_EXPIRE * 1000);
+        await env.SESSIONS.put(`session:${session}`, JSON.stringify({ expires_at: expires.toISOString() }));
+        const cookie = `${CONFIG.SESSION_COOKIE_NAME}=${session}; Path=/; HttpOnly; Max-Age=${CONFIG.SESSION_EXPIRE}`;
+        return new Response(JSON.stringify({ success: true, redirect: `${BASE_URL}/admin` }), {
           status: 200,
           headers: { 
-            'Content-Type': 'application/json; charset=utf-8',
-            ...handleCORS(request)
+            'Content-Type': 'application/json',
+            'Set-Cookie': cookie
           }
         });
       } else {
-        // 管理员 TOKEN 匹配失败，返回错误响应
-        return new Response(JSON.stringify({ 
-          success: false, 
-          error: '管理员 TOKEN 无效' 
-        }), {
-          status: 403,
-          headers: { 
-            'Content-Type': 'application/json; charset=utf-8',
-            ...handleCORS(request)
-          }
+        return new Response(JSON.stringify({ success: false, error: '认证失败' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
         });
       }
     }
-    // ======================
-    // 2. 生成设备激活 Token 接口 (/generate-code)
-    // ======================
-    if (path === '/generate-code' && request.method === 'POST') {
-      // 检查管理员权限（通过某种方式，这里假设管理员已登录或通过其他方式验证）
-      // 为了简化，这里假设任何通过 /generate-code 的请求都是管理员，实际应通过更安全的方式验证
-      // 您可以在此处添加更严格的管理员验证逻辑，如通过 Session/Cookie 或 Token
 
-      // 生成唯一的设备激活 Token
-      const token = crypto.randomUUID().substring(0, 12); // 生成 12 位 Token
+    // 7. 管理面板（GET /admin）—— 仅管理员可访问
+    if (path === '/admin') {
+      const isLoggedIn = await validateAdminSession();
+      if (!isLoggedIn) {
+        return Response.redirect(`${BASE_URL}/admin/login`, 302);
+      }
 
-      // 从环境变量中获取最大设备绑定数量，或使用默认值
-      const maxDevices = MAX_DEVICES_PER_TOKEN;
+      const adminHtml = `<!DOCTYPE html>
+<html><head><title>管理面板</title></head><body>
+<h1>管理面板</h1>
+<p>欢迎，管理员！</p>
+<a href="/admin/devices">查看设备</a> | 
+<a href="/generate-code">生成验证码</a> | 
+<a href="/health">健康检查</a> | 
+<a href="/admin/logout">退出</a>
+</body></html>`;
+      return new Response(adminHtml, { status: 200, headers: { 'Content-Type': 'text/html' } });
+    }
+    // 8. 设备列表（GET /admin/devices）—— 仅管理员
+    if (path === '/admin/devices') {
+      const isLoggedIn = await validateAdminSession();
+      if (!isLoggedIn) {
+        return Response.redirect(`${BASE_URL}/admin/login`, 302);
+      }
 
-      // 构建 Token 信息，包括设备计数和最大设备数
-      const codeInfo = {
-        device_count: 0,
-        max_devices: maxDevices,
-        activated_at: new Date().toISOString(),
-        used_code: token,
-        // 可根据需要添加更多字段，如 user_agent, client_ip 等
-      };
-
-      // 存储 Token 信息到 KV Codes
-      await env.CODES.put(`code:${token}`, JSON.stringify(codeInfo));
-
-      // 返回生成的 Token 信息
-      return new Response(JSON.stringify({
-        success: true,
-        code: token,
-        device_count: codeInfo.device_count,
-        max_devices: codeInfo.max_devices,
-      }), {
+      // 简单返回空设备列表（可接入 KV DEVICES 查询）
+      return new Response(JSON.stringify({ success: true, devices: [] }), {
         status: 200,
-        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        headers: { 'Content-Type': 'application/json' }
       });
     }
-    // ======================
-    // 3. 设备激活接口 (/) —— 通过 Token 激活并返回接口文件
-    // ======================
+
+    // 9. 生成验证码（POST /generate-code）—— 仅管理员
+    if (path === '/generate-code' && method === 'POST') {
+      const isLoggedIn = await validateAdminSession();
+      if (!isLoggedIn) {
+        return new Response(JSON.stringify({ success: false, error: '需要管理员权限' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      const code = generateOneTimeCode();
+      await env.CODES.put(`code:${code}`, JSON.stringify({ status: 'valid' }), {
+        expirationTtl: CONFIG.ONETIME_CODE_EXPIRE
+      });
+
+      return new Response(JSON.stringify({ success: true, code: code }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // 10. 退出登录（GET /admin/logout）
+    if (path === '/admin/logout') {
+      const cookie = `${CONFIG.SESSION_COOKIE_NAME}=; Path=/; HttpOnly; Max-Age=0`;
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', 'Set-Cookie': cookie }
+      });
+    }
+
+    // 11. 设备激活（GET / 或 /?token=XXX）
     if (path === '/' || path === '') {
-      const url = new URL(request.url);
-      const token = url.searchParams.get('token');
+      if (queryParams.has('token')) {
+        const token = queryParams.get('token');
+        const userAgent = request.headers.get('user-agent') || '';
+        const clientIp = request.headers.get('cf-connecting-ip') || 'unknown';
 
-      if (!token) {
-        return new Response(JSON.stringify({ 
-          error: '缺少 token 参数' 
-        }), {
-          status: 400,
-          headers: { 
-            'Content-Type': 'application/json; charset=utf-8',
-            ...handleCORS(request)
+        const isAllowedUserAgent = CONFIG.ALLOWED_USER_AGENTS.some(ua => userAgent.includes(ua));
+        
+        if (isAllowedUserAgent) {
+          try {
+            const codeData = await env.CODES.get(`code:${token}`);
+            if (codeData) {
+              const codeInfo = JSON.parse(codeData);
+              
+              if (codeInfo.status === 'valid') {
+                await env.CODES.delete(`code:${token}`);
+                
+                const deviceId = await generateDeviceId(userAgent, clientIp);
+                const expireDays = codeInfo.expire_days || 30;
+                
+                await env.DEVICES.put(`device:${deviceId}`, JSON.stringify({
+                  status: 'active',
+                  activated_at: new Date().toISOString(),
+                  expires_at: new Date(Date.now() + expireDays * 86400000).toISOString(),
+                  expire_days: expireDays,
+                  used_code: token,
+                  user_agent: userAgent.substring(0, 100),
+                  client_ip: clientIp,
+                  last_access: new Date().toISOString()
+                }), {
+                  expirationTtl: expireDays * 86400
+                });
+
+                try {
+                  const configResponse = await fetch(CONFIG.JSON_CONFIG_URL);
+                  if (configResponse.ok) {
+                    return new Response(await configResponse.text(), {
+                      status: 200,
+                      headers: { 
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'public, max-age=3600'
+                      }
+                    });
+                  }
+                } catch (error) {
+                  console.error('获取配置失败:', error);
+                }
+              }
+            }
+          } catch (error) {
+            console.error('设备激活错误:', error);
           }
-        });
-      }
-
-      // 从 KV 中获取 Token 对应的验证码信息
-      const codeData = await env.CODES.get(`code:${token}`);
-      if (!codeData) {
-        return Response.redirect(REDIRECT_URL, 302);
-      }
-
-      const codeInfo = JSON.parse(codeData);
-      const now = new Date();
-
-      // 检查设备绑定数量是否超过最大限制
-      if (codeInfo.device_count >= codeInfo.max_devices) {
-        // Token 已达到最大绑定设备数量，拒绝激活
-        return Response.redirect(REDIRECT_URL, 302);
-      }
-
-      // 允许激活，递增 device_count
-      codeInfo.device_count += 1;
-
-      // 更新 KV 中的 Token 信息
-      await env.CODES.put(`code:${token}`, JSON.stringify(codeInfo));
-
-      // 返回接口文件内容
-      const interfaceFileResponse = await fetch('https://devilardis.github.io/15DAYsTry/NIUB.json');
-      if (!interfaceFileResponse.ok) {
-        return new Response(JSON.stringify({ 
-          error: '无法获取接口文件' 
-        }), {
-          status: 500,
-          headers: { 
-            'Content-Type': 'application/json; charset=utf-8',
-            ...handleCORS(request)
-          }
-        });
-      }
-
-      // 返回接口文件的内容，保持原始 Content-Type
-      const interfaceFileData = await interfaceFileResponse.arrayBuffer();
-      return new Response(interfaceFileData, {
-        status: 200,
-        headers: {
-          'Content-Type': interfaceFileResponse.headers.get('content-type') || 'application/json; charset=utf-8',
-          ...handleCORS(request)
         }
-      });
+        return Response.redirect(CONFIG.REDIRECT_URL, 302);
+      }
+
+      const html = `<!DOCTYPE html><html><head><title>设备激活</title></head><body><h1>设备激活服务</h1><p>请通过正确 Token 访问</p></body></html>`;
+      return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html' } });
     }
-    // ======================
-    // 4. 健康检查接口 (/health)
-    // ======================
-    if (path === '/health' && request.method === 'GET') {
-      return new Response(JSON.stringify({ 
-        status: 'healthy',
-        timestamp: new Date().toISOString()
-      }), {
+    // 12. 健康检查（GET /health）
+    if (path === '/health') {
+      return new Response(JSON.stringify({ status: 'healthy', timestamp: new Date().toISOString() }), {
         status: 200,
-        headers: { 
-          'Content-Type': 'application/json; charset=utf-8',
-          ...handleCORS(request)
-        }
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
 
-    // ======================
-    // 5. 默认路由与其他逻辑
-    // ======================
-
-    // 处理 OPTIONS 方法（CORS Preflight）
-    if (request.method === 'OPTIONS') {
-      const corsHeaders = {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      };
-      return new Response(null, {
-        status: 204,
-        headers: corsHeaders,
-      });
-    }
-
-    // 处理未定义的路径，返回 404
-    return new Response(JSON.stringify({ 
-      error: '未找到路径', 
-      path: path 
+    // 13. 未知路径，返回 404
+    return new Response(JSON.stringify({
+      error: 'Not Found',
+      requested_path: path
     }), {
       status: 404,
-      headers: { 
-        'Content-Type': 'application/json; charset=utf-8',
-        ...handleCORS(request)
-      }
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     });
-  },
+  }
 };
