@@ -2,11 +2,11 @@ name = "tvbox-config-worker"
 compatibility_date = "2024-01-18"
 
 # KV 命名空间配置（需要先在Cloudflare Dashboard创建）
-kv_namespaces = [
-  { binding = "CODES", id = "7ba5a96533964d46b94dde8fa1b375d1" },
-  { binding = "DEVICES", id = "f918d0ab4f494261b3915afef705eda9" },
-  { binding = "SESSIONS", id = "477e537c10dc49d3af387945a5c9ada2" }
-]
+#kv_namespaces = [
+ # { binding = "CODES", id = "7ba5a96533964d46b94dde8fa1b375d1" },
+ # { binding = "DEVICES", id = "f918d0ab4f494261b3915afef705eda9" },
+ # { binding = "SESSIONS", id = "477e537c10dc49d3af387945a5c9ada2" }
+#]
 
 # 环境变量配置
 [vars]
