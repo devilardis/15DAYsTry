@@ -1,8 +1,8 @@
 export default {
   async fetch(request, env, ctx) {
     // ========== 原有配置参数 ==========
-    //const ALLOWED_USER_AGENT_KEYWORD = 'okhttp';  // 只放行包含此关键词的UA
-    //const REDIRECT_URL = 'https://www.baidu.com'; // 非法UA重定向地址
+    const ALLOWED_USER_AGENT_KEYWORD = 'okhttp/3.15';  // 只放行包含此关键词的UA
+    const REDIRECT_URL = 'https://www.baidu.com'; // 非法UA重定向地址
     const CONFIG_PATH = '/';                       // 唯一允许访问的路径
     const JSON_CONFIG_URL_ENV_VAR = 'JSON_CONFIG_URL'; // 环境变量名（您仪表盘上配置的变量名）
 
