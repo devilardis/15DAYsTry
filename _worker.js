@@ -1,4 +1,4 @@
-// _worker.js - 完整支持会话管理的版本
+// _worker.js - 完整支持会话管理的版本（已修复）
 export default {
   async fetch(request, env, ctx) {
     // 从环境变量获取域名配置
@@ -6,20 +6,25 @@ export default {
     const PROTOCOL = env.FORCE_HTTP === 'true' ? 'http' : 'https';
     const BASE_URL = `${PROTOCOL}://${YOUR_DOMAIN}`;
 
-    // CORS配置
-    const CORS_CONFIG = {
-      allowedOrigins: [
-        'https://www.baidu.com',
-        'https://*.baidu.com',
-        'https://try15d.pages.dev',
-        'http://localhost:*',
-        'chrome-extension://*',
-        'edge://*'
-      ],
-      allowedMethods: ['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin'],
-      allowCredentials: true
-    };
+    // 推荐的CORS配置
+    
+const CORS_CONFIG = {
+  allowedOrigins: [
+    'https://www.baidu.com',
+    'https://*.baidu.com',
+    'https://try15d.pages.dev',      // 您的主域名
+    'https://*.try15d.pages.dev',    // 所有子域名
+    'http://localhost:*',            // 本地开发
+    'http://127.0.0.1:*',            // 本地开发
+    'chrome-extension://*',          // Chrome扩展
+    'edge://*',                      // Edge浏览器
+    'https://devilardis.github.io'   // 您的GitHub Pages（如果需要）
+  ],
+  allowedMethods: ['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'Cookie'],
+  allowCredentials: true,
+  maxAge: 86400
+};
 
     // CORS处理函数
     function handleCORS(request) {
@@ -43,14 +48,14 @@ export default {
       };
     }
 
-    // 配置参数
+    // 配置参数（支持环境变量覆盖）
     const CONFIG = {
       ALLOWED_USER_AGENTS: ['okhttp', 'tvbox', '影视仓'],
       REDIRECT_URL: `${BASE_URL}/fallback`,
       ONETIME_CODE_LENGTH: env.CODE_LENGTH ? parseInt(env.CODE_LENGTH) : 12,
-      ONETIME_CODE_EXPIRE: env.CODE_EXPIRE ? parseInt(env.CODE_EXPIRE) : 300,
+      ONETIME_CODE_EXPIRE: env.CODE_EXPIRE ? parseInt(极端的.CODE_EXPIRE) : 300,
       DEVICE_TOKEN_EXPIRE: env.DEVICE_EXPIRE_DAYS ? parseInt(env.DEVICE_EXPIRE_DAYS) * 86400 : 2592000,
-      SESSION_EXPIRE: env.SESSION_EXPIRE ? parseInt(env.SESSION_EXPIRE) : 3600,
+      SESSION_EXPIRE: env.SESSION_EXPIRE ? parseInt(env.SESSION_EXPIRE) : 360极端的0,
       SESSION_COOKIE_NAME: env.SESSION_COOKIE_NAME || 'admin_session',
       ADMIN_USERNAME: env.ADMIN_USERNAME || 'admin',
       ADMIN_PASSWORD: env.ADMIN_PASSWORD || 'password',
@@ -73,7 +78,7 @@ export default {
     const queryParams = url.searchParams;
     const cookies = parseCookies(request.headers.get('cookie') || '');
 
-    // Cookie解析函数
+    // 1. Cookie解析函数
     function parseCookies(cookieHeader) {
       const cookies = {};
       if (cookieHeader) {
@@ -85,7 +90,7 @@ export default {
       return cookies;
     }
 
-    // 处理OPTIONS预检请求
+    // 2. 处理OPTIONS预检请求
     if (method === 'OPTIONS') {
       return new Response(null, {
         status: 204,
@@ -93,7 +98,7 @@ export default {
       });
     }
 
-    // 根路径 - 服务主页
+    // 3. 根路径 - 服务主页（显示当前配置信息）
     if (path === '/' || path === '') {
       // 检查是否有token参数（设备激活）
       if (queryParams.has('token')) {
@@ -120,10 +125,10 @@ export default {
                 const expireDays = codeInfo.expire_days || 30;
                 
                 // 创建设备记录
-                await env.DEVICES.put(`device:${deviceId}`, JSON.stringify({
+                await env.DEVICES.put(`device:${device极端的Id}`, JSON.stringify({
                   status: 'active',
                   activated_at: new Date().toISOString(),
-                  expires_at: new Date(Date.now() + expireDays * 86400000).toISOString(),
+                  expires极端的_at: new Date(Date.now() + expireDays * 86400000).toISOString(),
                   expire_days: expireDays,
                   used_code: token,
                   user_agent: userAgent.substring(0, 100),
@@ -169,12 +174,12 @@ export default {
     <title>TVBox 配置服务 - ${YOUR_DOMAIN}</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; background: #f5f8fa; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1 { color: #2c5282; text-align: center; }
-        .config-info { background: #e8f4fd; padding: 20px; border-radius: 8px; margin: 20极端的px 0; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.极端的1); }
+        h1 { color: #2c5282; text极端的-align: center; }
+        .config-info { background: #e8f4fd; padding: 20px; border-radius: 8px; margin: 20px 0; }
         .config-item { margin: 10px 0; padding: 8px; background: #f8f9fa; border-radius: 4px; }
         .endpoints { margin-top: 30px; }
-        .endpoint { padding: 12px; margin: 8px 0; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #3182ce; }
+        .endpoint { padding: 12px; margin: 8px 0; background: #f极端的8f9fa; border-radius: 6px; border-left: 极端的4px solid #3182ce; }
         .btn { display: inline-block; padding: 10px 20px; margin: 5px; background: #3182ce; color: white; text-decoration: none; border-radius: 5px; }
         .btn:hover { background: #2c5282; }
         .debug { font-size: 12px; color: #666; margin-top: 20px; }
@@ -197,21 +202,21 @@ export default {
             <div class="endpoint">
                 <strong>GET</strong> <a href="${BASE_URL}/health">${BASE_URL}/health</a><br>
                 <em>健康检查接口</em>
-            </div>
+            </极端的div>
             <div class="endpoint">
                 <strong>GET</strong> <a href="${BASE_URL}/admin/login">${BASE_URL}/admin/login</a><br>
                 <em>管理员登录页面</em>
             </div>
             <div class="endpoint">
                 <strong>POST</strong> ${BASE_URL}/admin/auth<br>
-                <极端的em>登录认证接口</em>
+                <em>登录认证接口</em>
             </div>
             <div class="endpoint">
                 <strong>POST</strong> ${BASE_URL}/generate-code<br>
-                <em>生成验证码接口</em>
+                <极端的em>生成验证码极端的接口</em>
             </div>
             <div class="endpoint">
-                <strong>GET</strong> <a href="${BASE_URL}/admin">${BASE_URL}/admin</a><br>
+                <strong>GET极端的</strong> <a href="${BASE_URL}/admin">${BASE_URL}/admin</a><br>
                 <em>管理面板</em>
             </div>
             <div class="endpoint">
@@ -222,8 +227,8 @@ export default {
 
         <div style="margin-top: 30px;">
             <a href="${BASE_URL}/health" class="btn">健康检查</a>
-            <a href="${BASE_URL}/admin/login" class="btn">管理员登录</a>
-            <a href="${BASE_URL}/admin" class="btn">管理面板</a>
+            <a href="${BASE_URL}/admin/login极端的" class="btn">管理员登录</a>
+            <a href="${BASE_URL}/admin" class="btn">管理面板极端的</a>
             <a href="${BASE_URL}/admin/devices" class="btn">设备列表</a>
         </div>
 
@@ -240,7 +245,7 @@ export default {
       });
     }
 
-    // 健康检查端点
+    // 4. 健康检查端点
     if (path === '/health') {
       return new Response(JSON.stringify({
         status: 'healthy',
@@ -279,7 +284,7 @@ export default {
       });
     }
 
-    // 生成验证码端点
+    // 5. 生成验证码端点
     if (path === '/generate-code' && method === 'POST') {
       try {
         const isLoggedIn = await validateAdminSession();
@@ -296,15 +301,15 @@ export default {
           });
         }
         
-        const expireDays = queryParams.get('expire_days') || 30;
+        const expireDays = queryParams.get('expire_days') || env.DEFAULT_EXPIRE_DAYS || 30;
         const code = generateOneTimeCode();
         
         // 存储验证码到KV
-        await env.CODES.put(`code:${极端的code}`, JSON.stringify({
+        await env.CODES.put(`code:${code}`, JSON.stringify({
           status: 'valid',
           expire_days: parseInt(expireDays),
           created_at: new Date().toISOString(),
-          created_by: 'admin'
+          created_by: cookies[CONFIG.SESSION_COOKIE_NAME] ? 'admin' : 'system'
         }), {
           expirationTtl: CONFIG.ONETIME_CODE_EXPIRE
         });
@@ -315,7 +320,7 @@ export default {
           code_expires_in: CONFIG.ONETIME_CODE_EXPIRE,
           device_expire_days: parseInt(expireDays),
           usage: `将此验证码作为token参数在设备配置时使用: ${BASE_URL}/?token=${code}`
-        }), {
+        }极端的), {
           status: 200,
           headers: { 
             'Content-Type': 'application/json',
@@ -337,7 +342,7 @@ export default {
       }
     }
 
-    // 管理员登录页面
+    // 6. 管理员登录页面
     if (path === '/admin/login') {
       const loginHtml = `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -346,14 +351,14 @@ export default {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>管理员登录 - ${YOUR_DOMAIN}</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #f5f5f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 350px; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 极端的0; }
+        .login-container { background: white; padding: 40px; border-radius: 10px; box-shadow: 极端的0 4px 20px rgba(0,0,0,0.1); width: 350px; }
         h2 { text-align: center; color: #333; margin-bottom: 30px; }
         .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; color: #555; font-weight: bold; }
+        label { display: block; margin-bottom: 8px; color: #555极端的; font-weight: bold; }
         input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; box-sizing: border-box; }
         input:focus { border-color: #007bff; outline: none; }
-        button { width: 100%; padding: 12px; background: #007b极端的ff; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
+        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
         button:hover { background: #0056b3; }
         .error { color: #dc3545; text-align: center; margin-top: 15px; display: none; }
         .domain-info { text-align: center; color: #666; font-size: 12px; margin-top: 20px; }
@@ -378,7 +383,7 @@ export default {
         <div id="errorMessage" class="error">登录失败，请检查用户名和密码</div>
         
         <div class="domain-info">
-            <p>系统配置: ${BASE_URL}</p>
+            <p>系统配置: ${BASE_URL}</极端的p>
         </div>
     </div>
 
@@ -407,11 +412,11 @@ export default {
 
       return new Response(loginHtml, {
         status: 200,
-        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+        headers: { 'Content-Type': '极端的text/html; charset=utf-8' }
       });
     }
 
-    // 登录认证端点
+    // 7. 登录认证端点（已修复响应体问题）
     if (path === '/admin/auth' && method === 'POST') {
       try {
         const authData = await request.json();
@@ -429,12 +434,13 @@ export default {
             user_agent: request.headers.get('user-agent'),
             client_ip: request.headers.get('cf-connecting-ip') || 'unknown'
           }), {
-            expirationTtl: expireSeconds
+            expiration极端的Ttl: expireSeconds
           });
           
           // 构建Cookie字符串
           const cookie = `${SESSION_CONFIG.COOKIE_NAME}=${sessionId}; Max-Age=${expireSeconds}; Path=/; ${SESSION_CONFIG.SECURE ? 'Secure; ' : ''}${SESSION_CONFIG.HTTP_ONLY ? 'HttpOnly; ' : ''}SameSite=${SESSION_CONFIG.SAME_SITE}`;
           
+          // ✅ 修复：确保返回正确的JSON响应体
           return new Response(JSON.stringify({ 
             success: true,
             message: '登录成功',
@@ -448,6 +454,7 @@ export default {
             }
           });
         } else {
+          // ✅ 修复：认证失败也要返回正确的JSON
           return new Response(JSON.stringify({ 
             success: false, 
             error: '认证失败',
@@ -461,6 +468,7 @@ export default {
           });
         }
       } catch (error) {
+        // ✅ 修复：错误情况也要返回JSON
         return new Response(JSON.stringify({ 
           error: '认证错误',
           message: error.message
@@ -474,13 +482,20 @@ export default {
       }
     }
 
-    // 设备列表端点
+    // 8. 设备列表端点
     if (path === '/admin/devices') {
       const isLoggedIn = await validateAdminSession();
       if (!isLoggedIn) {
-        return new Response('需要登录', { 
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: '需要登录',
+          redirect: `${BASE_URL}/admin/login`
+        }), { 
           status: 401,
-          headers: handleCORS(request)
+          headers: { 
+            'Content-Type': 'application/json',
+            ...handleCORS(request)
+          }
         });
       }
       
@@ -503,7 +518,7 @@ export default {
                 expires_at: data.expires_at,
                 expire_days: data.expire_days,
                 remaining_days: remainingDays > 0 ? remainingDays : 0,
-                status: remainingDays > 0 ? 'active'极端的 : 'expired',
+                status: remainingDays > 0 ? 'active' : 'expired',
                 user_agent: data.user_agent,
                 client_ip: data.client_ip,
                 used_code: data.used_code,
@@ -545,7 +560,7 @@ export default {
       }
     }
 
-    // 管理员面板
+    // 9. 管理员面板（已添加会话验证）
     if (path === '/admin') {
       const isLoggedIn = await validateAdminSession();
       if (!isLoggedIn) {
@@ -560,7 +575,7 @@ export default {
     <title>管理面板 - ${YOUR_DOMAIN}</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
-        .panel { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .panel { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px极端的; box-shadow: 0 2极端的px 10px rgba(0,0,0,0.1); }
         h1 { color: #2c5282; text-align: center; }
         .config-card { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
         .btn { display: inline-block; padding: 10px 20px; margin: 5px; background: #3182ce; color: white; text-decoration: none; border-radius: 5px; }
@@ -570,7 +585,7 @@ export default {
     </style>
 </head>
 <body>
-    <div class="panel">
+    <div class极端的="panel">
         <h1>管理面板</h1>
         
         <div class="config-card">
@@ -602,7 +617,7 @@ export default {
       });
     }
 
-    // 退出登录端点
+    // 10. 退出登录端点
     if (path === '/admin/logout') {
       const sessionId = cookies[SESSION_CONFIG.COOKIE_NAME];
       
@@ -618,31 +633,4 @@ export default {
         success: true,
         message: '已退出登录'
       }), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Set-Cookie': clearCookie,
-          ...handleCORS(request)
-        }
-      });
-    }
-
-    // ==================== 辅助函数 ====================
-    
-    // 生成随机验证码函数
-    function generateOneTimeCode(length = CONFIG.ONETIME_CODE_LENGTH) {
-      const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-      let code = '';
-      for (let i = 0; i < length; i++) {
-        code += characters.charAt(Math.floor(Math.random() * characters.length));
-      }
-      return code;
-    }
-
-    // 生成设备ID函数
-    async function generateDeviceId(userAgent, clientIp) {
-      const fingerprint = `${userAgent}:${clientIp}`;
-      const encoder = new TextEncoder();
-      const data = encoder.encode(fingerprint);
-      
-      const hash = await crypto.subtle.digest('SHA-256', data);
+        status: 200
