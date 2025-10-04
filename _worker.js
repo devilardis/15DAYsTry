@@ -1,86 +1,102 @@
 export default {
   async fetch(request, env, ctx) {
-    // ========== 基础配置 ==========
-    const ALLOWED_UA = 'okhttp';
-    const REDIRECT_URL = 'https://www.baidu.com';
-    
-    try {
-      const url = new URL(request.url);
-      const action = url.searchParams.get('action');
-      const userAgent = request.headers.get('User-Agent') || '';
+    // ========== 配置参数 ==========
+    const ALLOWED_USER_AGENT_KEYWORD = 'okhttp';        // 合法UA必须包含的关键词
+    const REDIRECT_URL = 'https://www.baidu.com';       // 非法请求重定向地址
+    const JSON_CONFIG_URL_ENV_VAR = 'JSON_CONFIG_URL';  // 存储配置URL的环境变量名
+    const CACHE_MAX_AGE_ENV_VAR = 'CACHE_MAX_AGE';      // 存储缓存时间的环境变量名
 
-      // ========== 1. 管理员操作跳过UA检测 ==========
-      const isAdminAction = action === 'generate_token';
-      
-      if (!isAdminAction && !userAgent.includes(ALLOWED_UA)) {
-        return Response.redirect(REDIRECT_URL, 302);
-      }
+    // ========== 1. 获取请求基本信息 ==========
+    const userAgent = request.headers.get('User-Agent') || '';
 
-      // ========== 2. 关键修复：确保KV绑定 ==========
-      if (!env.TOKEN_KV) {
-        throw new Error('TOKEN_KV namespace is not bound');
-      }
+    // ========== 2. UA 验证：只允许包含 okhttp 的UA ==========
+    const isUAValid = userAgent.includes(ALLOWED_USER_AGENT_KEYWORD);
+    if (!isUAValid) {
+      // UA不合法，直接302重定向到百度
+      return Response.redirect(REDIRECT_URL, 302);
+    }
 
-      // ========== 3. 路由处理 ==========
-      switch (action) {
-        case 'generate_token':
-          return await handleTokenGeneration(env, request, url);
-        default:
-          return new Response('Available actions: generate_token', { status: 400 });
-      }
-    } catch (error) {
-      return new Response(JSON.stringify({
-        error: "Internal Server Error",
-        message: error.message,
-        solution: "Check Cloudflare Worker logs"
-      }), {
+    // ========== 3. 获取配置文件的真实地址 ==========
+    const realConfigUrl = env[JSON_CONFIG_URL_ENV_VAR];
+    if (!realConfigUrl) {
+      return new Response('Server Error: Missing JSON_CONFIG_URL environment variable', { 
         status: 500,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'text/plain' }
       });
     }
+
+    // ========== 4. 获取缓存时间配置 ==========
+    let cacheMaxAgeSeconds = 86400; // 默认24小时
+    try {
+      const envCacheMaxAge = env[CACHE_MAX_AGE_ENV_VAR];
+      if (envCacheMaxAge) {
+        cacheMaxAgeSeconds = parseInt(envCacheMaxAge, 10);
+        if (isNaN(cacheMaxAgeSeconds) || cacheMaxAgeSeconds < 0) {
+          console.warn(`[Worker] Invalid CACHE_MAX_AGE value, using default: 86400`);
+          cacheMaxAgeSeconds = 86400;
+        }
+      }
+    } catch (err) {
+      console.error(`[Worker] Error parsing CACHE_MAX_AGE: ${err.message}`);
+    }
+
+    // ========================【缓存逻辑开始】============================
+    const cache = caches.default;
+    const cacheKey = new Request(realConfigUrl); // 使用配置URL作为缓存键
+
+    // 首先尝试从缓存获取
+    let cachedResponse = await cache.match(cacheKey);
+    if (cachedResponse) {
+      console.log('[Worker] ✅ Cache HIT - Returning cached config');
+      return cachedResponse;
+    }
+
+    console.log('[Worker] ❌ Cache MISS - Fetching from origin');
+
+    try {
+      // ========== 5. 向真实配置源发起HTTP请求 ==========
+      const originResponse = await fetch(realConfigUrl);
+      
+      if (!originResponse.ok) {
+        return new Response(`Origin server error: ${originResponse.status}`, {
+          status: originResponse.status,
+          headers: { 'Content-Type': 'text/plain' }
+        });
+      }
+
+      // ========== 6. 响应头处理（重要！） ==========
+      // 创建新的Headers对象，复制源站的所有响应头
+      const cacheHeaders = new Headers(originResponse.headers);
+      
+      // 强制覆盖Cache-Control头，设置我们想要的缓存时间
+      cacheHeaders.set('Cache-Control', `max-age=${cacheMaxAgeSeconds}`);
+      // 也可以设置CDN专用的缓存头
+      cacheHeaders.set('CDN-Cache-Control', `max-age=${cacheMaxAgeSeconds}`);
+      
+      // 确保Content-Type正确
+      if (!cacheHeaders.has('Content-Type')) {
+        cacheHeaders.set('Content-Type', 'application/json; charset=utf-8');
+      }
+
+      // ========== 7. 创建可缓存的响应 ==========
+      const responseToCache = new Response(originResponse.body, {
+        status: originResponse.status,
+        headers: cacheHeaders
+      });
+
+      // 异步存储到缓存
+      ctx.waitUntil(cache.put(cacheKey, responseToCache.clone()));
+      
+      console.log(`[Worker] ✅ Config fetched and cached for ${cacheMaxAgeSeconds} seconds`);
+      return responseToCache;
+
+    } catch (error) {
+      console.error('[Worker] Fetch error:', error);
+      return new Response('Internal Server Error: Failed to fetch configuration', {
+        status: 500,
+        headers: { 'Content-Type': 'text/plain' }
+      });
+    }
+    // ========================【缓存逻辑结束】==============================
   }
 };
-
-async function handleTokenGeneration(env, request, url) {
-  // ========== 1. 管理员验证 ==========
-  const ADMIN_KEY = env.AUTH_TOKEN || 'Ardis-417062';
-  const inputKey = url.searchParams.get('admin_key');
-  
-  if (inputKey !== ADMIN_KEY) {
-    return new Response(JSON.stringify({
-      error: "AUTHENTICATION_FAILED",
-      code: 1101,
-      message: "Invalid admin key"
-    }), { 
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-
-  // ========== 2. 生成Token ==========
-  const token = crypto.randomUUID().replace(/-/g, '').substring(0, 16);
-  const ttlDays = parseInt(env.TOKEN_TTL_DAYS) || 30;
-  
-  // ========== 3. 存储到KV ==========
-  await env.TOKEN_KV.put(
-    `token:${token}`,
-    JSON.stringify({
-      created_at: Date.now(),
-      expires_at: Date.now() + (ttlDays * 86400000),
-      status: 'active'
-    }),
-    { expirationTtl: ttlDays * 86400 }
-  );
-
-  return new Response(JSON.stringify({
-    success: true,
-    token: token,
-    expires_at: new Date(Date.now() + (ttlDays * 86400000)).toISOString(),
-    usage: `https://${new URL(request.url).hostname}/?action=activate&token=${token}`
-  }), {
-    headers: { 
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-store'
-    }
-  });
-}
