@@ -12,9 +12,8 @@ export default {
     // 从环境变量中读取最大设备绑定数量，如果未设置则默认为 10
     const MAX_DEVICES_PER_TOKEN = parseInt(env.MAX_DEVICES_PER_TOKEN) || 10;
 
-    // 从环境变量中读取管理员 TOKEN，如果未设置则默认为空（需要设置）
-    const ADMIN_TOKEN = env.ADMIN_TOKEN || '';
-
+    // 从环境变量中读取管理员 TOKEN，如果未设置则报错
+    const ADMIN_TOKEN = env.ADMIN_TOKEN;
     if (!ADMIN_TOKEN) {
       console.error('⚠️ 未设置 ADMIN_TOKEN 环境变量。请在 Cloudflare Dashboard 中设置 ADMIN_TOKEN。');
     }
@@ -38,56 +37,63 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
+    // ======================
+    // 1. 管理员访问后台接口 (/admin)
+    // ======================
+    if (path === '/admin' && request.method === 'GET') {
+      // 从查询参数中获取传递的管理员 TOKEN
+      const url = new URL(request.url);
+      const adminToken = url.searchParams.get('token');
 
-    // ======================
-    // 1. 管理员登录接口 (/admin/auth)
-    // ======================
-    if (path === '/admin/auth' && request.method === 'POST') {
-      // 从请求体中获取传递的 TOKEN
-      let requestBody;
-      try {
-        requestBody = await request.json();
-      } catch (e) {
-        return new Response(JSON.stringify({ success: false, error: '无效的请求体' }), {
+      if (!adminToken) {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: '缺少管理员 TOKEN 参数' 
+        }), {
           status: 400,
-          headers: { 'Content-Type': 'application/json; charset=utf-8' },
+          headers: { 
+            'Content-Type': 'application/json; charset=utf-8',
+            ...handleCORS(request)
+          }
         });
       }
 
-      const providedToken = requestBody.token; // 假设前端传递 { token: 'YOUR_ADMIN_TOKEN' }
-
-      if (!providedToken) {
-        return new Response(JSON.stringify({ success: false, error: '未提供管理员 TOKEN' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      // 验证管理员 TOKEN 是否与环境变量中的 ADMIN_TOKEN 匹配
+      if (adminToken === ADMIN_TOKEN) {
+        // 管理员 TOKEN 匹配成功，返回成功响应或后台页面内容
+        return new Response(JSON.stringify({ 
+          success: true, 
+          message: '管理员访问后台成功' 
+        }), {
+          status: 200,
+          headers: { 
+            'Content-Type': 'application/json; charset=utf-8',
+            ...handleCORS(request)
+          }
         });
-      }
-
-      // 验证提供的 TOKEN 是否与环境变量中的 ADMIN_TOKEN 匹配
-      if (providedToken !== ADMIN_TOKEN) {
-        return new Response(JSON.stringify({ success: false, error: '管理员 TOKEN 无效' }), {
+      } else {
+        // 管理员 TOKEN 匹配失败，返回错误响应
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: '管理员 TOKEN 无效' 
+        }), {
           status: 403,
-          headers: { 'Content-Type': 'application/json; charset=utf-8' },
+          headers: { 
+            'Content-Type': 'application/json; charset=utf-8',
+            ...handleCORS(request)
+          }
         });
       }
-
-      // 管理员登录成功，返回成功响应
-      // （如果使用 Session/Cookie，可以在此设置，此处简化处理）
-      return new Response(JSON.stringify({ success: true, message: '管理员登录成功' }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json; charset=utf-8' },
-      });
     }
-
     // ======================
-    // 2. 生成验证码接口 (/generate-code)
+    // 2. 生成设备激活 Token 接口 (/generate-code)
     // ======================
     if (path === '/generate-code' && request.method === 'POST') {
       // 检查管理员权限（通过某种方式，这里假设管理员已登录或通过其他方式验证）
       // 为了简化，这里假设任何通过 /generate-code 的请求都是管理员，实际应通过更安全的方式验证
       // 您可以在此处添加更严格的管理员验证逻辑，如通过 Session/Cookie 或 Token
 
-      // 生成唯一的 Token（验证码）
+      // 生成唯一的设备激活 Token
       const token = crypto.randomUUID().substring(0, 12); // 生成 12 位 Token
 
       // 从环境变量中获取最大设备绑定数量，或使用默认值
@@ -116,66 +122,8 @@ export default {
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
       });
     }
-
     // ======================
-    // 3. 退出登录接口 (/admin/logout)
-    // ======================
-    if (path === '/admin/logout' && request.method === 'POST') {
-      // 清除管理员会话（如果有实现 Session/Cookie，可以在此清除）
-      // 此处简化处理，直接返回成功响应
-      return new Response(JSON.stringify({ success: true, message: '已成功退出登录' }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json; charset=utf-8' },
-      });
-    }
-
-    // ======================
-    // 4. 管理面板接口 (/admin)
-    // ======================
-    if (path === '/admin' && request.method === 'GET') {
-      // 简单返回管理面板信息（可扩展）
-      return new Response(JSON.stringify({ message: '欢迎来到管理面板' }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json; charset=utf-8' },
-      });
-    }
-
-    // ======================
-    // 5. 设备列表接口 (/admin/devices)
-    // ======================
-    if (path === '/admin/devices' && request.method === 'GET') {
-      // 获取所有已激活的 Token 信息
-      const keys = await env.CODES.list({ prefix: 'code:' });
-      const tokens = keys.keys.map(key => key.name.replace('code:', ''));
-
-      const devicesList = [];
-
-      for (const token of tokens) {
-        const codeData = await env.CODES.get(`code:${token}`);
-        if (codeData) {
-          const codeInfo = JSON.parse(codeData);
-          devicesList.push({
-            token: token, // 将 Token 视为用户名
-            device_count: codeInfo.device_count,
-            max_devices: codeInfo.max_devices,
-            activated_at: codeInfo.activated_at,
-            // 如果需要，可以在此添加更多字段，如绑定的设备 ID 列表
-          });
-        }
-      }
-
-      // 返回设备列表信息
-      return new Response(JSON.stringify({
-        success: true,
-        total_tokens: devicesList.length,
-        tokens: devicesList,
-      }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json; charset=utf-8' },
-      });
-    }
-    // ======================
-    // 6. 根路径接口 (/) —— 设备激活与接口文件返回
+    // 3. 设备激活接口 (/) —— 通过 Token 激活并返回接口文件
     // ======================
     if (path === '/' || path === '') {
       const url = new URL(request.url);
@@ -239,7 +187,7 @@ export default {
       });
     }
     // ======================
-    // 7. 健康检查接口 (/health)
+    // 4. 健康检查接口 (/health)
     // ======================
     if (path === '/health' && request.method === 'GET') {
       return new Response(JSON.stringify({ 
@@ -253,8 +201,9 @@ export default {
         }
       });
     }
+
     // ======================
-    // 8. 默认路由与其他逻辑
+    // 5. 默认路由与其他逻辑
     // ======================
 
     // 处理 OPTIONS 方法（CORS Preflight）
