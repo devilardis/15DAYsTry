@@ -10,7 +10,7 @@ kv_namespaces = [
 
 # 环境变量配置
 [vars]
-WORKER_DOMAIN = "https://try15d.pages.dev"
+WORKER_DOMAIN = "try15d.pages.dev"
 ENVIRONMENT = "production"
 CODE_LENGTH = "12"
 CODE_EXPIRE = "300"
