@@ -1,0 +1,35 @@
+name: Deploy Worker and Database
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: Install Wrangler
+        run: npm install -g wrangler
+        
+      - name: Configure Wrangler
+        run: |
+          wrangler config --api-key ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          
+      - name: Deploy D1 Migrations
+        run: |
+          wrangler d1 execute token-device-db --file=migrations/0001_create_tables.sql --remote
+          
+      - name: Deploy Worker
+        run: |
+          wrangler deploy
