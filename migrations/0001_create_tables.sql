@@ -1,0 +1,26 @@
+-- migrations/0001_create_tables.sql
+CREATE TABLE IF NOT EXISTS tokens (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  token TEXT NOT NULL UNIQUE,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  is_active BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE IF NOT EXISTS devices (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  token_id INTEGER NOT NULL,
+  user_agent TEXT NOT NULL,
+  os TEXT,
+  app_name TEXT,
+  app_version TEXT,
+  device_id TEXT,
+  device_name TEXT,
+  first_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
+  last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (token_id) REFERENCES tokens (id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_tokens_token ON tokens (token);
+CREATE INDEX idx_devices_token_id ON devices (token_id);
+CREATE INDEX idx_devices_device_id ON devices (device_id);
+CREATE INDEX idx_devices_os ON devices (os);
