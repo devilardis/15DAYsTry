@@ -30,7 +30,7 @@ jobs:
           
       - name: Apply Database Migrations
         run: |
-          wrangler d1 execute token-device-db --file=migrations/0001_create_tables.sql --remote
+          wrangler d1 execute tvbox-customer-device-db --file=migrations/0001_create_tables.sql --remote
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
