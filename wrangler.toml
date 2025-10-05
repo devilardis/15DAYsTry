@@ -1,8 +1,0 @@
-[default]
-name = "15daystry"
-main = "_worker.js"  # 指向你的 Worker 入口文件
-type = "javascript"
-
-[env.production]
-workers_dev = false
-route = "try-65y.pages.dev/app"
