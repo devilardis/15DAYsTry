@@ -79,6 +79,22 @@ export default {
     }
 
     // ========== 4. UA验证 ==========
+    // 跳过管理页面和API路由的UA验证
+if (url.pathname.startsWith('/admin')) {
+    console.log(`[Worker] 🔧 Skipping UA validation for admin route: ${url.pathname}`);
+} else {
+    let isUAValid = false;
+    let matchedPattern = '';
+    let clientType = 'unknown';
+
+    try {
+        const uaPatternsConfig = env[UA_PATTERNS_ENV_VAR];
+        let uaPatterns = [
+            {
+                pattern: 'okhttp\/[0-9]+\.[0-9]+(\.[0-9]+)?',
+                type: 'okhttp',
+                description: 'OkHttp library with version'
+            },
     let isUAValid = false;
     let matchedPattern = '';
     let clientType = 'unknown';
@@ -146,7 +162,19 @@ export default {
             return Response.redirect(REDIRECT_URL, 302);
         }
     }
+if (!isUAValid) {
+            console.log(`[Worker] ❌❌❌❌ UA validation failed. IP: ${clientIP}`);
+            return Response.redirect(REDIRECT_URL, 302);
+        }
 
+    } catch (configError) {
+        console.error('[Worker] UA config error:', configError.message);
+        isUAValid = userAgent.includes('okhttp');
+        if (!isUAValid) {
+            return Response.redirect(REDIRECT_URL, 302);
+        }
+    }
+}
     // ========== 5. 获取配置文件 ==========
     const realConfigUrl = env[JSON_CONFIG_URL_ENV_VAR];
     if (!realConfigUrl) {
