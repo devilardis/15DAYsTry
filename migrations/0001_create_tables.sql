@@ -1,4 +1,3 @@
--- migrations/0001_create_tables.sql
 CREATE TABLE IF NOT EXISTS tokens (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   token TEXT NOT NULL UNIQUE,
