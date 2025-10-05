@@ -1,9 +1,0 @@
-name = "15daystry"
-compatibility_date = "2025-10-05"
-compatibility_flags = [ "nodejs_compat" ]
-main = "_worker.js"
-
-[[d1_databases]]
-binding = "DB"
-database_name = "tvbox-customer-device-db"
-database_id = "94c551ee-25e6-4302-8a98-e7f562bbcfe1"
