@@ -2,7 +2,7 @@
 const REDIRECT_URL = process.env.REDIRECT_URL || 'https://www.baidu.com';
 const JSON_CONFIG_URL = process.env.JSON_CONFIG_URL;
 const CACHE_MAX_AGE = parseInt(process.env.CACHE_MAX_AGE || '3600', 10);
-const SWR_MAX_AGE = parseInt(env.SWR_MAX_AGE || '86400', 10);
+const SWR_MAX_AGE = parseInt(process.env.SWR_MAX_AGE || '86400', 10);
 const UA_PATTERNS = process.env.UA_PATTERNS
   ? JSON.parse(process.env.UA_PATTERNS)
   : [
