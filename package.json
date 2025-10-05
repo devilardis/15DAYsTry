@@ -1,0 +1,6 @@
+{
+  "name": "your-worker-name",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker for token management",
+  "type": "module"
+}
