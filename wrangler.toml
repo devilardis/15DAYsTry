@@ -1,4 +1,4 @@
-name = "tvbox-worker"
+name = "try"
 compatibility_date = "2024-10-05"
 compatibility_flags = [ "nodejs_compat" ]
 main = "_worker.js"
@@ -7,8 +7,3 @@ main = "_worker.js"
 binding = "DB"
 database_name = "tvbox-customer-device-db"
 database_id = "94c551ee-25e6-4302-8a98-e7f562bbcfe1"
-
-# 添加环境变量示例
-[vars]
-UA_PATTERNS = '["okhttp","dart:io","Java","Python-urllib"]'
-TOKEN_PARAM_NAME = "token"
