@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "include": ["/app"],
+  "exclude": ["/static/*", "/assets/*", "/*.css", "/*.js", "/*.png", "/*.jpg", "/*.jpeg", "/*.gif", "/*.ico"],
+  "platform": {
+    "begin": {
+      "type": "rewrite",
+      "to": "/_worker.js"
+    }
+  }
+}
