@@ -2,7 +2,9 @@ name = "tvbox-worker"
 compatibility_date = "2024-10-05"
 compatibility_flags = [ "nodejs_compat" ]
 
-# D1 数据库绑定配置
+# 添加这一行 - 指定入口文件
+main = "_worker.js"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "tvbox-customer-device-db"
